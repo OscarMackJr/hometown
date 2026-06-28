@@ -15,6 +15,9 @@ async function runRigEvaluation() {
     const ledgerResult = await factory.queryContext('divisional_financial_ledger', 'acct_azure_77331');
     console.log('Result verification check:', JSON.stringify(ledgerResult, null, 2));
 
+    console.log('\n[Testing Route C: Intrepid Loan Engine]');
+    const intrepidResult = await factory.queryContext('intrepid_loan_engine', 'INTREPID_RUN_2026_Q2_001');
+    console.log('Result verification check:', JSON.stringify(intrepidResult, null, 2));
     console.log('\n✅ EVALUATION SUCCESS: All architectural integration constraints met cleanly.');
     process.exit(0);
   } catch (error) {
