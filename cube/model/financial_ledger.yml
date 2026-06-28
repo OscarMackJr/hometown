@@ -1,0 +1,40 @@
+cubes:
+  - name: financial_ledger_account
+    title: Financial Ledger Account
+    description: Ledger-side account concept used to relate financial context to enterprise customers.
+    sql_table: dbo.ledger_accounts
+
+    joins:
+      - name: enterprise_customer
+        relationship: many_to_one
+        sql: "{CUBE}.customer_id = {enterprise_customer}.id"
+
+    dimensions:
+      - name: id
+        sql: account_id
+        type: string
+        primary_key: true
+
+      - name: customer_id
+        sql: customer_id
+        type: string
+
+      - name: currency_code
+        sql: currency_code
+        type: string
+
+      - name: accounting_period
+        sql: accounting_period
+        type: string
+
+      - name: ledger_source_node
+        sql: "'Azure_SQL_Ledger_Cluster'"
+        type: string
+
+    measures:
+      - name: count
+        type: count
+
+      - name: current_balance
+        sql: current_balance
+        type: sum
