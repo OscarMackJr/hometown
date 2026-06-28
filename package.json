@@ -1,0 +1,21 @@
+{
+  "name": "dark-factory-semantic-engine",
+  "version": "1.0.0",
+  "description": "Schema-first, agentic-ready decoupled multi-cloud semantic runtime engine.",
+  "type": "module",
+  "main": "dist/core/factory.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/core/factory.js",
+    "test:factory": "tsc && node dist/tests/factory-evaluation-rig.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
