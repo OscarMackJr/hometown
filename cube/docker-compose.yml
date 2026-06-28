@@ -1,0 +1,16 @@
+services:
+  cube:
+    image: cubejs/cube:latest
+    ports:
+      - "4000:4000"
+      - "15432:15432"
+    env_file:
+      - .env
+    environment:
+      CUBEJS_DEV_MODE: "true"
+      CUBEJS_API_SECRET: ${CUBEJS_API_SECRET}
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_URL: ${AWS_POSTGRES_CRM_URL}
+      CUBEJS_SQL_PORT: 15432
+    volumes:
+      - .:/cube/conf

@@ -1,0 +1,36 @@
+cubes:
+  - name: enterprise_customer
+    title: Enterprise Customer
+    description: Unified customer concept for the CRM-centered Enterprise Knowledge Graph POC.
+    sql_table: public.customers
+
+    joins:
+      - name: financial_ledger_account
+        relationship: one_to_many
+        sql: "{CUBE}.id = {financial_ledger_account}.customer_id"
+
+    dimensions:
+      - name: id
+        sql: id
+        type: string
+        primary_key: true
+
+      - name: company_name
+        sql: company_name
+        type: string
+
+      - name: risk_status
+        sql: risk_status
+        type: string
+
+      - name: customer_id
+        sql: id
+        type: string
+
+    measures:
+      - name: count
+        type: count
+
+      - name: lifetime_value
+        sql: lifetime_value
+        type: sum
