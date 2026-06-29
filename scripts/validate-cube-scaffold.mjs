@@ -7,6 +7,10 @@ const requiredFiles = [
   'cube/.env.example',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
+  'cube/model/intrepid_loan_runs.yml',
+  'cube/model/intrepid_loans.yml',
+  'cube/model/intrepid_loan_exceptions.yml',
+  'cube/model/intrepid_portfolio_exceptions.yml',
   'cube/README.md'
 ];
 
@@ -92,10 +96,59 @@ requireIncludes('financial_ledger model', financialLedger, [
   'Azure_SQL_Ledger_Cluster'
 ]);
 
+const intrepidLoanRuns = readRequired('cube/model/intrepid_loan_runs.yml');
+requireIncludes('intrepid_loan_runs model', intrepidLoanRuns, [
+  'name: intrepid_loan_runs',
+  'sql_table: public.loan_run',
+  'tenant_id',
+  'run_id',
+  'name: intrepid_loans',
+  'name: intrepid_loan_exceptions',
+  'name: intrepid_portfolio_exceptions'
+]);
+
+const intrepidLoans = readRequired('cube/model/intrepid_loans.yml');
+requireIncludes('intrepid_loans model', intrepidLoans, [
+  'name: intrepid_loans',
+  'sql_table: public.loan_fact',
+  'tenant_id',
+  'run_id',
+  'seller_loan_no',
+  'name: intrepid_loan_runs',
+  'name: intrepid_loan_exceptions'
+]);
+
+const intrepidLoanExceptions = readRequired('cube/model/intrepid_loan_exceptions.yml');
+requireIncludes('intrepid_loan_exceptions model', intrepidLoanExceptions, [
+  'name: intrepid_loan_exceptions',
+  'sql_table: public.loan_exceptions',
+  'tenant_id',
+  'run_id',
+  'seller_loan_no',
+  'rule_id',
+  'exception_type',
+  'balance_impact'
+]);
+
+const intrepidPortfolioExceptions = readRequired('cube/model/intrepid_portfolio_exceptions.yml');
+requireIncludes('intrepid_portfolio_exceptions model', intrepidPortfolioExceptions, [
+  'name: intrepid_portfolio_exceptions',
+  'sql_table: public.portfolio_exceptions',
+  'tenant_id',
+  'run_id',
+  'rule_id',
+  'exception_type',
+  'balance_impact'
+]);
+
 for (const file of [
   'cube/docker-compose.yml',
   'cube/model/enterprise_customer.yml',
-  'cube/model/financial_ledger.yml'
+  'cube/model/financial_ledger.yml',
+  'cube/model/intrepid_loan_runs.yml',
+  'cube/model/intrepid_loans.yml',
+  'cube/model/intrepid_loan_exceptions.yml',
+  'cube/model/intrepid_portfolio_exceptions.yml'
 ]) {
   const content = readRequired(file);
   if (content.includes('\t')) {

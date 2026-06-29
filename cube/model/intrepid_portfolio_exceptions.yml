@@ -1,0 +1,64 @@
+cubes:
+  - name: intrepid_portfolio_exceptions
+    title: Intrepid Portfolio Exceptions
+    description: Tenant-scoped portfolio-level rule exceptions produced by the Intrepid loan engine.
+    sql_table: public.portfolio_exceptions
+
+    joins:
+      - name: intrepid_loan_runs
+        relationship: many_to_one
+        sql: "{CUBE}.tenant_id = {intrepid_loan_runs}.tenant_id AND {CUBE}.run_id = {intrepid_loan_runs}.run_id"
+
+    dimensions:
+      - name: id
+        sql: "coalesce(cast({CUBE}.exception_id as text), concat({CUBE}.tenant_id, ':', {CUBE}.run_id, ':', {CUBE}.rule_id))"
+        type: string
+        primary_key: true
+
+      - name: tenant_id
+        sql: tenant_id
+        type: string
+
+      - name: run_id
+        sql: run_id
+        type: string
+
+      - name: rule_id
+        sql: rule_id
+        type: string
+
+      - name: exception_type
+        sql: exception_type
+        type: string
+
+      - name: platform
+        sql: platform
+        type: string
+
+      - name: severity
+        sql: severity
+        type: string
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+    measures:
+      - name: count
+        type: count
+
+      - name: expected_value
+        sql: expected_value
+        type: avg
+
+      - name: actual_value
+        sql: actual_value
+        type: avg
+
+      - name: difference
+        sql: difference
+        type: avg
+
+      - name: balance_impact
+        sql: balance_impact
+        type: sum

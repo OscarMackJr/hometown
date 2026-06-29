@@ -1,0 +1,72 @@
+cubes:
+  - name: intrepid_loan_exceptions
+    title: Intrepid Loan Exceptions
+    description: Tenant-scoped loan-level rule exceptions produced by the Intrepid loan engine.
+    sql_table: public.loan_exceptions
+
+    joins:
+      - name: intrepid_loan_runs
+        relationship: many_to_one
+        sql: "{CUBE}.tenant_id = {intrepid_loan_runs}.tenant_id AND {CUBE}.run_id = {intrepid_loan_runs}.run_id"
+
+      - name: intrepid_loans
+        relationship: many_to_one
+        sql: "{CUBE}.tenant_id = {intrepid_loans}.tenant_id AND {CUBE}.run_id = {intrepid_loans}.run_id AND {CUBE}.seller_loan_no = {intrepid_loans}.seller_loan_no"
+
+    dimensions:
+      - name: id
+        sql: "coalesce(cast({CUBE}.exception_id as text), concat({CUBE}.tenant_id, ':', {CUBE}.run_id, ':', {CUBE}.seller_loan_no, ':', {CUBE}.rule_id))"
+        type: string
+        primary_key: true
+
+      - name: tenant_id
+        sql: tenant_id
+        type: string
+
+      - name: run_id
+        sql: run_id
+        type: string
+
+      - name: seller_loan_no
+        sql: seller_loan_no
+        type: string
+
+      - name: rule_id
+        sql: rule_id
+        type: string
+
+      - name: exception_type
+        sql: exception_type
+        type: string
+
+      - name: severity
+        sql: severity
+        type: string
+
+      - name: metric_name
+        sql: metric_name
+        type: string
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+    measures:
+      - name: count
+        type: count
+
+      - name: expected_value
+        sql: expected_value
+        type: avg
+
+      - name: actual_value
+        sql: actual_value
+        type: avg
+
+      - name: difference
+        sql: difference
+        type: avg
+
+      - name: balance_impact
+        sql: balance_impact
+        type: sum
