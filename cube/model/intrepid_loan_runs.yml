@@ -1,0 +1,64 @@
+cubes:
+  - name: intrepid_loan_runs
+    title: Intrepid Loan Runs
+    description: Tenant-scoped processing runs produced by the Intrepid loan engine.
+    sql_table: public.loan_run
+
+    joins:
+      - name: intrepid_loans
+        relationship: one_to_many
+        sql: "{CUBE}.tenant_id = {intrepid_loans}.tenant_id AND {CUBE}.run_id = {intrepid_loans}.run_id"
+
+      - name: intrepid_loan_exceptions
+        relationship: one_to_many
+        sql: "{CUBE}.tenant_id = {intrepid_loan_exceptions}.tenant_id AND {CUBE}.run_id = {intrepid_loan_exceptions}.run_id"
+
+      - name: intrepid_portfolio_exceptions
+        relationship: one_to_many
+        sql: "{CUBE}.tenant_id = {intrepid_portfolio_exceptions}.tenant_id AND {CUBE}.run_id = {intrepid_portfolio_exceptions}.run_id"
+
+    dimensions:
+      - name: id
+        sql: "concat({CUBE}.tenant_id, ':', {CUBE}.run_id)"
+        type: string
+        primary_key: true
+
+      - name: tenant_id
+        sql: tenant_id
+        type: string
+
+      - name: run_id
+        sql: run_id
+        type: string
+
+      - name: portfolio
+        sql: portfolio
+        type: string
+
+      - name: status
+        sql: status
+        type: string
+
+      - name: as_of_date
+        sql: as_of_date
+        type: time
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+      - name: started_at
+        sql: started_at
+        type: time
+
+      - name: completed_at
+        sql: completed_at
+        type: time
+
+    measures:
+      - name: count
+        type: count
+
+      - name: irr_target
+        sql: irr_target
+        type: avg

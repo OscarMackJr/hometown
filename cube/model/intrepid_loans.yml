@@ -1,0 +1,64 @@
+cubes:
+  - name: intrepid_loans
+    title: Intrepid Loans
+    description: Tenant-scoped loan facts generated for a specific Intrepid loan processing run.
+    sql_table: public.loan_fact
+
+    joins:
+      - name: intrepid_loan_runs
+        relationship: many_to_one
+        sql: "{CUBE}.tenant_id = {intrepid_loan_runs}.tenant_id AND {CUBE}.run_id = {intrepid_loan_runs}.run_id"
+
+      - name: intrepid_loan_exceptions
+        relationship: one_to_many
+        sql: "{CUBE}.tenant_id = {intrepid_loan_exceptions}.tenant_id AND {CUBE}.run_id = {intrepid_loan_exceptions}.run_id AND {CUBE}.seller_loan_no = {intrepid_loan_exceptions}.seller_loan_no"
+
+    dimensions:
+      - name: id
+        sql: "concat({CUBE}.tenant_id, ':', {CUBE}.run_id, ':', {CUBE}.seller_loan_no)"
+        type: string
+        primary_key: true
+
+      - name: tenant_id
+        sql: tenant_id
+        type: string
+
+      - name: run_id
+        sql: run_id
+        type: string
+
+      - name: seller_loan_no
+        sql: seller_loan_no
+        type: string
+
+      - name: status
+        sql: status
+        type: string
+
+      - name: has_exceptions
+        sql: has_exceptions
+        type: boolean
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+    measures:
+      - name: count
+        type: count
+
+      - name: original_balance
+        sql: original_balance
+        type: sum
+
+      - name: current_balance
+        sql: current_balance
+        type: sum
+
+      - name: purchase_price
+        sql: purchase_price
+        type: sum
+
+      - name: average_price_pct
+        sql: price_pct
+        type: avg
