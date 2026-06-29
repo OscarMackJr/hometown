@@ -1,0 +1,42 @@
+services:
+  intrepid-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: intrepid_smoke
+      POSTGRES_USER: intrepid_smoke
+      POSTGRES_PASSWORD: intrepid_smoke
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intrepid_smoke -d intrepid_smoke"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - ./smoke/intrepid-postgres/init:/docker-entrypoint-initdb.d:ro
+
+  cube-intrepid-smoke:
+    image: cubejs/cube:latest
+    depends_on:
+      intrepid-postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+      - "15432:15432"
+    environment:
+      CUBEJS_DEV_MODE: "true"
+      CUBEJS_API_SECRET: intrepid-smoke-secret
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: intrepid-postgres
+      CUBEJS_DB_PORT: 5432
+      CUBEJS_DB_NAME: intrepid_smoke
+      CUBEJS_DB_USER: intrepid_smoke
+      CUBEJS_DB_PASS: intrepid_smoke
+      CUBEJS_DB_URL: postgres://intrepid_smoke:intrepid_smoke@intrepid-postgres:5432/intrepid_smoke
+      CUBEJS_SQL_PORT: 15432
+      INTREPID_POSTGRES_URL: postgres://intrepid_smoke:intrepid_smoke@intrepid-postgres:5432/intrepid_smoke
+      INTREPID_CUBE_SCHEMA: public
+      INTREPID_TENANT_ID: 11111111-1111-4111-8111-111111111111
+    volumes:
+      - .:/cube/conf
+

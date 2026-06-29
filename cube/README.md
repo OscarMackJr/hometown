@@ -7,7 +7,7 @@ The scaffold is intentionally connection-safe. It defines the shape of the seman
 ## What This Provides
 
 - A local Docker Compose entry for Cube.
-- Placeholder environment variables for CRM and ledger data sources.
+- Placeholder environment variables for CRM, ledger, and Intrepid data sources.
 - Initial YAML semantic models for:
   - `enterprise_customer`
   - `financial_ledger_account`
@@ -18,6 +18,7 @@ The scaffold is intentionally connection-safe. It defines the shape of the seman
 - Customer-to-ledger relationship fields for the first GraphRAG slice.
 - Tenant-aware Intrepid loan run, loan, and exception model stubs.
 - A CI-safe validation script that checks scaffold structure without connecting to live databases.
+- A disposable Intrepid Cube smoke test that starts local Postgres and Cube containers.
 
 ## Required Environment Variables
 
@@ -33,9 +34,12 @@ Then fill in local or non-production values:
 AWS_POSTGRES_CRM_URL=
 AZURE_SQL_LEDGER_URL=
 CUBEJS_API_SECRET=
+INTREPID_POSTGRES_URL=
+INTREPID_CUBE_SCHEMA=
+INTREPID_TENANT_ID=
 ```
 
-Do not commit `cube/.env`. Real database URLs and API secrets must come from local developer configuration or managed cloud secret stores.
+Do not commit `cube/.env`. Real database URLs, tenant identifiers, and API secrets must come from local developer configuration or managed cloud secret stores.
 
 ## Local Run
 
@@ -52,6 +56,26 @@ Cube will use the mounted repository configuration and expose:
 
 The current scaffold maps Cube's default database URL to `AWS_POSTGRES_CRM_URL` so the CRM slice can be brought up first. The Azure ledger URL and Intrepid loan engine source are reserved for later multi-source wiring steps.
 
+## Intrepid Cube Smoke Test
+
+Run the disposable Intrepid Cube smoke test with:
+
+```bash
+npm run smoke:cube:intrepid
+```
+
+The smoke test starts a local Postgres container, seeds one Intrepid loan processing run with related loan and exception rows, starts Cube against that disposable database, and queries `intrepid_loan_runs.count` through the Cube REST API. It uses only local container credentials defined in `cube/docker-compose.intrepid-smoke.yml`; no production or sandbox secrets are required.
+
+The GitHub Actions validation gate also runs this smoke test so pull requests prove that Cube can load the Intrepid models and execute a basic query without connecting to real enterprise data.
+
+## Non-Production Intrepid Profile
+
+The Intrepid profile uses these variables when moving beyond the disposable smoke test:
+
+- `INTREPID_POSTGRES_URL` for a sandbox or ephemeral Postgres-compatible Intrepid database.
+- `INTREPID_CUBE_SCHEMA` for the schema containing Intrepid tables, typically `public` in the POC.
+- `INTREPID_TENANT_ID` for tenant-scoped smoke data and future row-level security context.
+
 ## What Is Mocked
 
 The repository still uses the existing TypeScript integration mocks for the Dark Factory validation rig. Those mocks prove the integration contract and Zod validation path.
@@ -63,8 +87,9 @@ The Cube scaffold does not yet connect to real CRM, ledger, or Intrepid database
 - Required semantic model names are present.
 - Customer-to-ledger relationship fields are present.
 - Intrepid loan models include tenant-aware keys and joins.
+- The disposable Intrepid Cube smoke test can load the models and query seeded data.
 - No live-looking credentials are committed in the Cube example env file.
 
 ## Next Step
 
-After this scaffold lands, the next slice should add a non-production Cube connection profile and a tiny query smoke test against disposable or sandbox data. Intrepid live connectivity should preserve tenant context through row-level security or explicit `tenant_id` filters.
+After this scaffold lands, the next slice should replace the smoke schema with a non-production Cube connection profile against sandbox Intrepid data. Intrepid live connectivity should preserve tenant context through row-level security or explicit `tenant_id` filters.

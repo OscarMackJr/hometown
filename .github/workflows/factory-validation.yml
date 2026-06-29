@@ -32,5 +32,8 @@ jobs:
       - name: Validate Cube scaffold
         run: npm run validate:cube
 
+      - name: Run Intrepid Cube smoke test
+        run: npm run smoke:cube:intrepid
+
       - name: Run factory validation
         run: npm run test:factory
