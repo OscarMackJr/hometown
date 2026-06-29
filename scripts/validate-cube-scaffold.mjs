@@ -5,6 +5,7 @@ const root = process.cwd();
 const requiredFiles = [
   'cube/docker-compose.yml',
   'cube/docker-compose.intrepid-smoke.yml',
+  'cube/docker-compose.intrepid-sandbox.yml',
   'cube/.env.example',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
@@ -13,6 +14,7 @@ const requiredFiles = [
   'cube/model/intrepid_loan_exceptions.yml',
   'cube/model/intrepid_portfolio_exceptions.yml',
   'cube/smoke/intrepid-postgres/init/001_schema.sql',
+  'scripts/cube-intrepid-sandbox-query.mjs',
   'cube/README.md'
 ];
 
@@ -96,6 +98,21 @@ requireIncludes('Intrepid smoke seed SQL', smokeSeed, [
   'INTREPID_RUN_2026_Q2_001'
 ]);
 
+const sandboxCompose = readRequired('cube/docker-compose.intrepid-sandbox.yml');
+requireIncludes('cube/docker-compose.intrepid-sandbox.yml', sandboxCompose, [
+  'cubejs/cube',
+  'CUBEJS_DB_URL: ${INTREPID_POSTGRES_URL}',
+  'INTREPID_CUBE_SCHEMA: ${INTREPID_CUBE_SCHEMA:-public}',
+  'INTREPID_TENANT_ID: ${INTREPID_TENANT_ID}'
+]);
+
+const querySandbox = readRequired('scripts/cube-intrepid-sandbox-query.mjs');
+requireIncludes('scripts/cube-intrepid-sandbox-query.mjs', querySandbox, [
+  'INTREPID_TENANT_ID',
+  'INTREPID_SANDBOX_RUN_ID',
+  'intrepid_loan_runs.count',
+  'intrepid_loan_runs.tenant_id'
+]);
 const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
 requireIncludes('enterprise_customer model', enterpriseCustomer, [
   'cubes:',
@@ -167,6 +184,7 @@ requireIncludes('intrepid_portfolio_exceptions model', intrepidPortfolioExceptio
 for (const file of [
   'cube/docker-compose.yml',
   'cube/docker-compose.intrepid-smoke.yml',
+  'cube/docker-compose.intrepid-sandbox.yml',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
   'cube/model/intrepid_loan_runs.yml',
@@ -190,5 +208,4 @@ if (failures.length > 0) {
 }
 
 console.log('Cube scaffold validation passed.');
-
 
