@@ -76,6 +76,20 @@ The Intrepid profile uses these variables when moving beyond the disposable smok
 - `INTREPID_CUBE_SCHEMA` for the schema containing Intrepid tables, typically `public` in the POC.
 - `INTREPID_TENANT_ID` for tenant-scoped smoke data and future row-level security context.
 
+Start Cube against a non-production Intrepid database with:
+
+```bash
+cd cube
+docker compose -f docker-compose.intrepid-sandbox.yml up
+```
+
+Then query one tenant-scoped Intrepid run through Cube from the repository root:
+
+```bash
+npm run query:cube:intrepid:sandbox
+```
+
+Set `INTREPID_SANDBOX_RUN_ID` when you want the query to assert a specific run id. This sandbox query is intentionally not part of CI because it requires real non-production credentials.
 ## What Is Mocked
 
 The repository still uses the existing TypeScript integration mocks for the Dark Factory validation rig. Those mocks prove the integration contract and Zod validation path.
@@ -93,3 +107,4 @@ The Cube scaffold does not yet connect to real CRM, ledger, or Intrepid database
 ## Next Step
 
 After this scaffold lands, the next slice should replace the smoke schema with a non-production Cube connection profile against sandbox Intrepid data. Intrepid live connectivity should preserve tenant context through row-level security or explicit `tenant_id` filters.
+

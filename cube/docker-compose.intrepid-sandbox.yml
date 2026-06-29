@@ -1,0 +1,19 @@
+services:
+  cube-intrepid-sandbox:
+    image: cubejs/cube:latest
+    ports:
+      - "4000:4000"
+      - "15432:15432"
+    env_file:
+      - .env
+    environment:
+      CUBEJS_DEV_MODE: "true"
+      CUBEJS_API_SECRET: ${CUBEJS_API_SECRET}
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_URL: ${INTREPID_POSTGRES_URL}
+      CUBEJS_SQL_PORT: 15432
+      INTREPID_POSTGRES_URL: ${INTREPID_POSTGRES_URL}
+      INTREPID_CUBE_SCHEMA: ${INTREPID_CUBE_SCHEMA:-public}
+      INTREPID_TENANT_ID: ${INTREPID_TENANT_ID}
+    volumes:
+      - .:/cube/conf

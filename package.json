@@ -9,7 +9,8 @@
     "start": "node dist/core/factory.js",
     "test:factory": "tsc && node dist/tests/factory-evaluation-rig.js",
     "validate:cube": "node scripts/validate-cube-scaffold.mjs",
-    "smoke:cube:intrepid": "node scripts/cube-intrepid-smoke.mjs"
+    "smoke:cube:intrepid": "node scripts/cube-intrepid-smoke.mjs",
+    "query:cube:intrepid:sandbox": "node scripts/cube-intrepid-sandbox-query.mjs"
   },
   "dependencies": {
     "axios": "^1.7.0",
