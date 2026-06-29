@@ -4,6 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const requiredFiles = [
   'cube/docker-compose.yml',
+  'cube/docker-compose.intrepid-smoke.yml',
   'cube/.env.example',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
@@ -11,6 +12,7 @@ const requiredFiles = [
   'cube/model/intrepid_loans.yml',
   'cube/model/intrepid_loan_exceptions.yml',
   'cube/model/intrepid_portfolio_exceptions.yml',
+  'cube/smoke/intrepid-postgres/init/001_schema.sql',
   'cube/README.md'
 ];
 
@@ -46,7 +48,10 @@ const envLines = envExample
 const requiredEnvVars = [
   'AWS_POSTGRES_CRM_URL',
   'AZURE_SQL_LEDGER_URL',
-  'CUBEJS_API_SECRET'
+  'CUBEJS_API_SECRET',
+  'INTREPID_POSTGRES_URL',
+  'INTREPID_CUBE_SCHEMA',
+  'INTREPID_TENANT_ID'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -71,6 +76,24 @@ requireIncludes('cube/docker-compose.yml', compose, [
   '15432:15432',
   'CUBEJS_API_SECRET',
   'AWS_POSTGRES_CRM_URL'
+]);
+const smokeCompose = readRequired('cube/docker-compose.intrepid-smoke.yml');
+requireIncludes('cube/docker-compose.intrepid-smoke.yml', smokeCompose, [
+  'postgres:16-alpine',
+  'cubejs/cube',
+  'intrepid_smoke',
+  'intrepid-smoke-secret',
+  'INTREPID_POSTGRES_URL',
+  'INTREPID_TENANT_ID'
+]);
+
+const smokeSeed = readRequired('cube/smoke/intrepid-postgres/init/001_schema.sql');
+requireIncludes('Intrepid smoke seed SQL', smokeSeed, [
+  'CREATE TABLE public.loan_run',
+  'CREATE TABLE public.loan_fact',
+  'CREATE TABLE public.loan_exceptions',
+  'CREATE TABLE public.portfolio_exceptions',
+  'INTREPID_RUN_2026_Q2_001'
 ]);
 
 const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
@@ -143,12 +166,14 @@ requireIncludes('intrepid_portfolio_exceptions model', intrepidPortfolioExceptio
 
 for (const file of [
   'cube/docker-compose.yml',
+  'cube/docker-compose.intrepid-smoke.yml',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
   'cube/model/intrepid_loan_runs.yml',
   'cube/model/intrepid_loans.yml',
   'cube/model/intrepid_loan_exceptions.yml',
-  'cube/model/intrepid_portfolio_exceptions.yml'
+  'cube/model/intrepid_portfolio_exceptions.yml',
+  'cube/smoke/intrepid-postgres/init/001_schema.sql'
 ]) {
   const content = readRequired(file);
   if (content.includes('\t')) {
@@ -165,3 +190,5 @@ if (failures.length > 0) {
 }
 
 console.log('Cube scaffold validation passed.');
+
+

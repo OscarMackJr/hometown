@@ -1,1 +1,6 @@
-node_modules/*cube/.env
+node_modules/
+cube/.env
+cube/.env.local
+cube/.env.smoke
+cube/.cubestore/
+
