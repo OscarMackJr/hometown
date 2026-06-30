@@ -12,7 +12,8 @@
     "smoke:cube:intrepid": "node scripts/cube-intrepid-smoke.mjs",
     "query:cube:intrepid:sandbox": "node scripts/cube-intrepid-sandbox-query.mjs",
     "verify:intrepid:cube-adapter": "npm run build && node scripts/verify-intrepid-cube-adapter.mjs",
-    "test:factory:intrepid-cube": "npm run build && node scripts/run-factory-intrepid-cube.mjs"
+    "test:factory:intrepid-cube": "npm run build && node scripts/run-factory-intrepid-cube.mjs",
+    "verify:intrepid:sandbox-mapping": "node scripts/verify-intrepid-sandbox-mapping.mjs"
   },
   "dependencies": {
     "axios": "^1.7.0",
