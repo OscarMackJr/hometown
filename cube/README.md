@@ -117,6 +117,22 @@ INTREPID_TENANT_ID=11111111-1111-4111-8111-111111111111
 
 Do not use `localhost` inside the Cube container for another Docker-hosted Postgres database. In that context, `localhost` points at the Cube container itself.
 
+
+## Cube-Backed Intrepid Adapter
+
+The Intrepid integration defaults to deterministic mock mode so CI does not require live Cube or database credentials:
+
+```env
+INTREPID_INTEGRATION_MODE=mock
+```
+
+For local POC verification, start Cube against the local Docker Postgres profile, then run:
+
+```bash
+npm run verify:intrepid:cube-adapter
+```
+
+That script builds the TypeScript adapter, loads local values from `cube/.env`, sets `INTREPID_INTEGRATION_MODE=cube`, calls the `intrepid_loan_engine` integration, and prints the resulting `SemanticRecord`.
 ## What Is Mocked
 
 The repository still uses the existing TypeScript integration mocks for the Dark Factory validation rig. Those mocks prove the integration contract and Zod validation path.
@@ -134,3 +150,4 @@ The Cube scaffold does not yet connect to real CRM, ledger, or Intrepid database
 ## Next Step
 
 After this scaffold lands, the next slice should replace the smoke schema with a non-production Cube connection profile against sandbox Intrepid data. Intrepid live connectivity should preserve tenant context through row-level security or explicit `tenant_id` filters.
+

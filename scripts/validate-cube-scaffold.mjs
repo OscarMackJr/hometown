@@ -15,6 +15,7 @@ const requiredFiles = [
   'cube/model/intrepid_portfolio_exceptions.yml',
   'cube/smoke/intrepid-postgres/init/001_schema.sql',
   'scripts/cube-intrepid-sandbox-query.mjs',
+  'scripts/verify-intrepid-cube-adapter.mjs',
   'specs/WHY_CUBE_SEMANTIC_LAYER.md',
   'cube/README.md'
 ];
@@ -59,7 +60,8 @@ const requiredEnvVars = [
   'INTREPID_POSTGRES_USER',
   'INTREPID_POSTGRES_PASSWORD',
   'INTREPID_CUBE_SCHEMA',
-  'INTREPID_TENANT_ID'
+  'INTREPID_TENANT_ID',
+  'INTREPID_INTEGRATION_MODE'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -85,6 +87,7 @@ requireIncludes('cube/docker-compose.yml', compose, [
   'CUBEJS_API_SECRET',
   'AWS_POSTGRES_CRM_URL'
 ]);
+
 const smokeCompose = readRequired('cube/docker-compose.intrepid-smoke.yml');
 requireIncludes('cube/docker-compose.intrepid-smoke.yml', smokeCompose, [
   'postgres:16-alpine',
@@ -124,12 +127,21 @@ requireIncludes('scripts/cube-intrepid-sandbox-query.mjs', querySandbox, [
   'intrepid_loan_runs.count',
   'intrepid_loan_runs.tenant_id'
 ]);
+
+const verifyCubeAdapter = readRequired('scripts/verify-intrepid-cube-adapter.mjs');
+requireIncludes('scripts/verify-intrepid-cube-adapter.mjs', verifyCubeAdapter, [
+  'INTREPID_INTEGRATION_MODE',
+  'cube',
+  'fetchContext'
+]);
+
 const whyCube = readRequired('specs/WHY_CUBE_SEMANTIC_LAYER.md');
 requireIncludes('specs/WHY_CUBE_SEMANTIC_LAYER.md', whyCube, [
   'Cube is the semantic layer',
   'governed business API',
   'GraphRAG'
 ]);
+
 const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
 requireIncludes('enterprise_customer model', enterpriseCustomer, [
   'cubes:',
@@ -225,4 +237,3 @@ if (failures.length > 0) {
 }
 
 console.log('Cube scaffold validation passed.');
-
