@@ -16,6 +16,7 @@ const requiredFiles = [
   'cube/smoke/intrepid-postgres/init/001_schema.sql',
   'scripts/cube-intrepid-sandbox-query.mjs',
   'scripts/verify-intrepid-cube-adapter.mjs',
+  'scripts/run-factory-intrepid-cube.mjs',
   'specs/WHY_CUBE_SEMANTIC_LAYER.md',
   'cube/README.md'
 ];
@@ -128,6 +129,12 @@ requireIncludes('scripts/cube-intrepid-sandbox-query.mjs', querySandbox, [
   'intrepid_loan_runs.tenant_id'
 ]);
 
+const factoryCubeMode = readRequired('scripts/run-factory-intrepid-cube.mjs');
+requireIncludes('scripts/run-factory-intrepid-cube.mjs', factoryCubeMode, [
+  'INTREPID_INTEGRATION_MODE',
+  'cube',
+  'factory-evaluation-rig'
+]);
 const verifyCubeAdapter = readRequired('scripts/verify-intrepid-cube-adapter.mjs');
 requireIncludes('scripts/verify-intrepid-cube-adapter.mjs', verifyCubeAdapter, [
   'INTREPID_INTEGRATION_MODE',
@@ -237,3 +244,4 @@ if (failures.length > 0) {
 }
 
 console.log('Cube scaffold validation passed.');
+
