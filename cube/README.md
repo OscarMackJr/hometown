@@ -35,6 +35,11 @@ AWS_POSTGRES_CRM_URL=
 AZURE_SQL_LEDGER_URL=
 CUBEJS_API_SECRET=
 INTREPID_POSTGRES_URL=
+INTREPID_POSTGRES_HOST=
+INTREPID_POSTGRES_PORT=
+INTREPID_POSTGRES_DB=
+INTREPID_POSTGRES_USER=
+INTREPID_POSTGRES_PASSWORD=
 INTREPID_CUBE_SCHEMA=
 INTREPID_TENANT_ID=
 ```
@@ -73,6 +78,7 @@ The GitHub Actions validation gate also runs this smoke test so pull requests pr
 The Intrepid profile uses these variables when moving beyond the disposable smoke test:
 
 - `INTREPID_POSTGRES_URL` for a sandbox or ephemeral Postgres-compatible Intrepid database.
+- `INTREPID_POSTGRES_HOST`, `INTREPID_POSTGRES_PORT`, `INTREPID_POSTGRES_DB`, `INTREPID_POSTGRES_USER`, and `INTREPID_POSTGRES_PASSWORD` for Cube's explicit Postgres connection settings.
 - `INTREPID_CUBE_SCHEMA` for the schema containing Intrepid tables, typically `public` in the POC.
 - `INTREPID_TENANT_ID` for tenant-scoped smoke data and future row-level security context.
 
@@ -90,6 +96,27 @@ npm run query:cube:intrepid:sandbox
 ```
 
 Set `INTREPID_SANDBOX_RUN_ID` when you want the query to assert a specific run id. This sandbox query is intentionally not part of CI because it requires real non-production credentials.
+
+### Local Docker Postgres
+
+When the Intrepid POC database is another Docker service, put Cube on the same Docker network and use the Postgres container name as the host. The current sandbox compose profile joins the external `deploy_default` network, which works with the local Postgres container named `deploy-postgres-1`.
+
+Example local-only values for `cube/.env`:
+
+```env
+CUBEJS_API_SECRET=local-dev-secret
+INTREPID_POSTGRES_HOST=deploy-postgres-1
+INTREPID_POSTGRES_PORT=5432
+INTREPID_POSTGRES_DB=intrepid_cube_poc
+INTREPID_POSTGRES_USER=nexus
+INTREPID_POSTGRES_PASSWORD=nexus
+INTREPID_POSTGRES_URL=postgresql://nexus:nexus@deploy-postgres-1:5432/intrepid_cube_poc
+INTREPID_CUBE_SCHEMA=public
+INTREPID_TENANT_ID=11111111-1111-4111-8111-111111111111
+```
+
+Do not use `localhost` inside the Cube container for another Docker-hosted Postgres database. In that context, `localhost` points at the Cube container itself.
+
 ## What Is Mocked
 
 The repository still uses the existing TypeScript integration mocks for the Dark Factory validation rig. Those mocks prove the integration contract and Zod validation path.
@@ -107,4 +134,3 @@ The Cube scaffold does not yet connect to real CRM, ledger, or Intrepid database
 ## Next Step
 
 After this scaffold lands, the next slice should replace the smoke schema with a non-production Cube connection profile against sandbox Intrepid data. Intrepid live connectivity should preserve tenant context through row-level security or explicit `tenant_id` filters.
-
