@@ -133,6 +133,14 @@ npm run verify:intrepid:cube-adapter
 ```
 
 That script builds the TypeScript adapter, loads local values from `cube/.env`, sets `INTREPID_INTEGRATION_MODE=cube`, calls the `intrepid_loan_engine` integration, and prints the resulting `SemanticRecord`.
+For an end-to-end local proof through the full Dark Factory evaluation rig, run:
+
+```bash
+npm run test:factory:intrepid-cube
+```
+
+This command loads `cube/.env`, forces `INTREPID_INTEGRATION_MODE=cube`, verifies Cube is reachable, and then runs the same factory rig used by CI. It remains local-only and is not part of GitHub Actions.
+
 ## What Is Mocked
 
 The repository still uses the existing TypeScript integration mocks for the Dark Factory validation rig. Those mocks prove the integration contract and Zod validation path.
