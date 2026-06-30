@@ -97,6 +97,16 @@ npm run query:cube:intrepid:sandbox
 
 Set `INTREPID_SANDBOX_RUN_ID` when you want the query to assert a specific run id. This sandbox query is intentionally not part of CI because it requires real non-production credentials.
 
+### Sandbox Schema Mapping Verification
+
+Before treating a non-production Intrepid database as compatible with the Cube models, set `INTREPID_SANDBOX_VERIFY=non-production` in local configuration and run:
+
+```bash
+npm run verify:intrepid:sandbox-mapping
+```
+
+The verifier reads only Postgres metadata from `information_schema.columns`, prints table and column names, and fails if the required `loan_run`, `loan_fact`, `loan_exceptions`, or `portfolio_exceptions` contract is missing. The mapping contract lives in the specs index.
+
 ### Local Docker Postgres
 
 When the Intrepid POC database is another Docker service, put Cube on the same Docker network and use the Postgres container name as the host. The current sandbox compose profile joins the external `deploy_default` network, which works with the local Postgres container named `deploy-postgres-1`.

@@ -17,7 +17,9 @@ const requiredFiles = [
   'scripts/cube-intrepid-sandbox-query.mjs',
   'scripts/verify-intrepid-cube-adapter.mjs',
   'scripts/run-factory-intrepid-cube.mjs',
+  'scripts/verify-intrepid-sandbox-mapping.mjs',
   'specs/WHY_CUBE_SEMANTIC_LAYER.md',
+  'specs/INTREPID_SANDBOX_SCHEMA_MAPPING_v0.1.md',
   'cube/README.md'
 ];
 
@@ -62,7 +64,8 @@ const requiredEnvVars = [
   'INTREPID_POSTGRES_PASSWORD',
   'INTREPID_CUBE_SCHEMA',
   'INTREPID_TENANT_ID',
-  'INTREPID_INTEGRATION_MODE'
+  'INTREPID_INTEGRATION_MODE',
+  'INTREPID_SANDBOX_VERIFY'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -142,6 +145,15 @@ requireIncludes('scripts/verify-intrepid-cube-adapter.mjs', verifyCubeAdapter, [
   'fetchContext'
 ]);
 
+const verifySandboxMapping = readRequired('scripts/verify-intrepid-sandbox-mapping.mjs');
+requireIncludes('scripts/verify-intrepid-sandbox-mapping.mjs', verifySandboxMapping, [
+  'information_schema.columns',
+  'INTREPID_SANDBOX_VERIFY',
+  'non-production',
+  'psql',
+  'loan_run',
+  'portfolio_exceptions'
+]);
 const whyCube = readRequired('specs/WHY_CUBE_SEMANTIC_LAYER.md');
 requireIncludes('specs/WHY_CUBE_SEMANTIC_LAYER.md', whyCube, [
   'Cube is the semantic layer',
@@ -149,6 +161,17 @@ requireIncludes('specs/WHY_CUBE_SEMANTIC_LAYER.md', whyCube, [
   'GraphRAG'
 ]);
 
+const mappingContract = readRequired('specs/INTREPID_SANDBOX_SCHEMA_MAPPING_v0.1.md');
+requireIncludes('specs/INTREPID_SANDBOX_SCHEMA_MAPPING_v0.1.md', mappingContract, [
+  'Intrepid Sandbox Schema Mapping Contract v0.1',
+  'PostgreSQL-compatible',
+  'INTREPID_SANDBOX_VERIFY=non-production',
+  'loan_run',
+  'loan_fact',
+  'loan_exceptions',
+  'portfolio_exceptions',
+  'Tenant isolation filter'
+]);
 const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
 requireIncludes('enterprise_customer model', enterpriseCustomer, [
   'cubes:',
