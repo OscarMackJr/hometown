@@ -15,6 +15,7 @@ const requiredFiles = [
   'cube/model/intrepid_portfolio_exceptions.yml',
   'cube/smoke/intrepid-postgres/init/001_schema.sql',
   'scripts/cube-intrepid-sandbox-query.mjs',
+  'specs/WHY_CUBE_SEMANTIC_LAYER.md',
   'cube/README.md'
 ];
 
@@ -52,6 +53,11 @@ const requiredEnvVars = [
   'AZURE_SQL_LEDGER_URL',
   'CUBEJS_API_SECRET',
   'INTREPID_POSTGRES_URL',
+  'INTREPID_POSTGRES_HOST',
+  'INTREPID_POSTGRES_PORT',
+  'INTREPID_POSTGRES_DB',
+  'INTREPID_POSTGRES_USER',
+  'INTREPID_POSTGRES_PASSWORD',
   'INTREPID_CUBE_SCHEMA',
   'INTREPID_TENANT_ID'
 ];
@@ -101,7 +107,12 @@ requireIncludes('Intrepid smoke seed SQL', smokeSeed, [
 const sandboxCompose = readRequired('cube/docker-compose.intrepid-sandbox.yml');
 requireIncludes('cube/docker-compose.intrepid-sandbox.yml', sandboxCompose, [
   'cubejs/cube',
+  'CUBEJS_DB_HOST: ${INTREPID_POSTGRES_HOST}',
+  'CUBEJS_DB_NAME: ${INTREPID_POSTGRES_DB}',
+  'CUBEJS_DB_USER: ${INTREPID_POSTGRES_USER}',
+  'CUBEJS_DB_PASS: ${INTREPID_POSTGRES_PASSWORD}',
   'CUBEJS_DB_URL: ${INTREPID_POSTGRES_URL}',
+  'deploy_default',
   'INTREPID_CUBE_SCHEMA: ${INTREPID_CUBE_SCHEMA:-public}',
   'INTREPID_TENANT_ID: ${INTREPID_TENANT_ID}'
 ]);
@@ -112,6 +123,12 @@ requireIncludes('scripts/cube-intrepid-sandbox-query.mjs', querySandbox, [
   'INTREPID_SANDBOX_RUN_ID',
   'intrepid_loan_runs.count',
   'intrepid_loan_runs.tenant_id'
+]);
+const whyCube = readRequired('specs/WHY_CUBE_SEMANTIC_LAYER.md');
+requireIncludes('specs/WHY_CUBE_SEMANTIC_LAYER.md', whyCube, [
+  'Cube is the semantic layer',
+  'governed business API',
+  'GraphRAG'
 ]);
 const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
 requireIncludes('enterprise_customer model', enterpriseCustomer, [

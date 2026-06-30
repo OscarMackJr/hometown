@@ -10,6 +10,11 @@ services:
       CUBEJS_DEV_MODE: "true"
       CUBEJS_API_SECRET: ${CUBEJS_API_SECRET}
       CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: ${INTREPID_POSTGRES_HOST}
+      CUBEJS_DB_PORT: ${INTREPID_POSTGRES_PORT:-5432}
+      CUBEJS_DB_NAME: ${INTREPID_POSTGRES_DB}
+      CUBEJS_DB_USER: ${INTREPID_POSTGRES_USER}
+      CUBEJS_DB_PASS: ${INTREPID_POSTGRES_PASSWORD}
       CUBEJS_DB_URL: ${INTREPID_POSTGRES_URL}
       CUBEJS_SQL_PORT: 15432
       INTREPID_POSTGRES_URL: ${INTREPID_POSTGRES_URL}
@@ -17,3 +22,9 @@ services:
       INTREPID_TENANT_ID: ${INTREPID_TENANT_ID}
     volumes:
       - .:/cube/conf
+    networks:
+      - deploy_default
+
+networks:
+  deploy_default:
+    external: true
