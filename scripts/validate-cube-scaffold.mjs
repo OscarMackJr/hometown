@@ -62,6 +62,7 @@ const requiredEnvVars = [
   'INTREPID_POSTGRES_DB',
   'INTREPID_POSTGRES_USER',
   'INTREPID_POSTGRES_PASSWORD',
+  'INTREPID_POSTGRES_CONTAINER',
   'INTREPID_CUBE_SCHEMA',
   'INTREPID_TENANT_ID',
   'INTREPID_INTEGRATION_MODE',
@@ -151,6 +152,8 @@ requireIncludes('scripts/verify-intrepid-sandbox-mapping.mjs', verifySandboxMapp
   'INTREPID_SANDBOX_VERIFY',
   'non-production',
   'psql',
+  'docker exec',
+  '--docker',
   'loan_run',
   'portfolio_exceptions'
 ]);
@@ -170,7 +173,9 @@ requireIncludes('specs/INTREPID_SANDBOX_SCHEMA_MAPPING_v0.1.md', mappingContract
   'loan_fact',
   'loan_exceptions',
   'portfolio_exceptions',
-  'Tenant isolation filter'
+  'Tenant isolation filter',
+  'verify:intrepid:sandbox-mapping:docker',
+  'INTREPID_POSTGRES_CONTAINER'
 ]);
 const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
 requireIncludes('enterprise_customer model', enterpriseCustomer, [

@@ -107,6 +107,14 @@ npm run verify:intrepid:sandbox-mapping
 
 The verifier reads only Postgres metadata from `information_schema.columns`, prints table and column names, and fails if the required `loan_run`, `loan_fact`, `loan_exceptions`, or `portfolio_exceptions` contract is missing. The mapping contract lives in the specs index.
 
+When the POC database is the local Docker container, avoid Windows host-name and `localhost` ambiguity by running the Docker-backed verifier instead:
+
+```bash
+npm run verify:intrepid:sandbox-mapping:docker
+```
+
+The Docker mode uses `docker exec` against `INTREPID_POSTGRES_CONTAINER`, defaulting to `deploy-postgres-1`, and runs the same read-only metadata check inside the Postgres container.
+
 ### Local Docker Postgres
 
 When the Intrepid POC database is another Docker service, put Cube on the same Docker network and use the Postgres container name as the host. The current sandbox compose profile joins the external `deploy_default` network, which works with the local Postgres container named `deploy-postgres-1`.
