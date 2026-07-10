@@ -13,6 +13,8 @@ const requiredFiles = [
   'cube/model/intrepid_loans.yml',
   'cube/model/intrepid_loan_exceptions.yml',
   'cube/model/intrepid_portfolio_exceptions.yml',
+  'cube/model/ai_token_usage.yml',
+  'cube/model/ai_answer_traces.yml',
   'cube/smoke/intrepid-postgres/init/001_schema.sql',
   'scripts/cube-intrepid-sandbox-query.mjs',
   'scripts/verify-intrepid-cube-adapter.mjs',
@@ -245,6 +247,25 @@ requireIncludes('intrepid_portfolio_exceptions model', intrepidPortfolioExceptio
   'balance_impact'
 ]);
 
+
+const aiTokenUsage = readRequired('cube/model/ai_token_usage.yml');
+requireIncludes('ai_token_usage model', aiTokenUsage, [
+  'name: ai_token_usage',
+  'LiteLLM_SpendLogs',
+  'request_id',
+  'spend_logs_metadata',
+  'total_cost_usd',
+  'total_tokens'
+]);
+
+const aiAnswerTraces = readRequired('cube/model/ai_answer_traces.yml');
+requireIncludes('ai_answer_traces model', aiAnswerTraces, [
+  'name: ai_answer_traces',
+  'sql_table: public.answer_trace',
+  'name: ai_token_usage',
+  'primary_request_id',
+  'ungrounded_answers'
+]);
 for (const file of [
   'cube/docker-compose.yml',
   'cube/docker-compose.intrepid-smoke.yml',
@@ -255,6 +276,8 @@ for (const file of [
   'cube/model/intrepid_loans.yml',
   'cube/model/intrepid_loan_exceptions.yml',
   'cube/model/intrepid_portfolio_exceptions.yml',
+  'cube/model/ai_token_usage.yml',
+  'cube/model/ai_answer_traces.yml',
   'cube/smoke/intrepid-postgres/init/001_schema.sql'
 ]) {
   const content = readRequired(file);
@@ -272,4 +295,5 @@ if (failures.length > 0) {
 }
 
 console.log('Cube scaffold validation passed.');
+
 

@@ -153,6 +153,37 @@ function fetchColumnMetadata() {
     });
 }
 
+
+function buildTableExistenceSql() {
+  const tableList = Object.keys(expectedSchema).map(sqlLiteral).join(', ');
+  return `
+SELECT schemaname, tablename
+FROM pg_tables
+WHERE schemaname = ${sqlLiteral(process.env.INTREPID_CUBE_SCHEMA)}
+  AND tablename IN (${tableList})
+ORDER BY tablename;
+`.trim();
+}
+
+function fetchExistingTables() {
+  const sql = buildTableExistenceSql();
+  const result = verifyMode === 'docker' ? runDockerPsql(sql) : runLocalPsql(sql);
+
+  if (result.status !== 0) {
+    throw new Error(`Sandbox table existence query failed. ${result.context} exit ${result.status}: ${result.stderr.trim()}`);
+  }
+
+  return new Set(
+    result.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [schemaName, tableName] = line.split('\t');
+        return `${schemaName}.${tableName}`;
+      })
+  );
+}
 function runLocalPsql(sql) {
   const result = spawnSync('psql', [
     '--host', process.env.INTREPID_POSTGRES_HOST,
@@ -207,7 +238,7 @@ function runDockerPsql(sql) {
   return { ...result, context: `docker exec ${containerName} psql` };
 }
 
-function validateMetadata(rows) {
+function validateMetadata(rows, existingTables) {
   const byTable = new Map();
   for (const row of rows) {
     if (!byTable.has(row.tableName)) byTable.set(row.tableName, []);
@@ -218,7 +249,15 @@ function validateMetadata(rows) {
   for (const [tableName, requiredColumns] of Object.entries(expectedSchema)) {
     const tableRows = byTable.get(tableName) ?? [];
     if (tableRows.length === 0) {
-      failures.push(`Missing table: ${process.env.INTREPID_CUBE_SCHEMA}.${tableName}`);
+      const qualifiedName = `${process.env.INTREPID_CUBE_SCHEMA}.${tableName}`;
+      if (existingTables.has(qualifiedName)) {
+        failures.push(
+          `Table exists but column metadata is not visible to ${process.env.INTREPID_POSTGRES_USER}: ${qualifiedName}. ` +
+          `Grant USAGE on schema ${process.env.INTREPID_CUBE_SCHEMA} and SELECT on ${qualifiedName}, or use a reader role with those privileges.`
+        );
+      } else {
+        failures.push(`Missing table: ${qualifiedName}`);
+      }
       continue;
     }
 
@@ -248,7 +287,8 @@ try {
   loadLocalEnv();
   assertRequiredEnv();
   const rows = fetchColumnMetadata();
-  const { byTable, failures } = validateMetadata(rows);
+  const existingTables = fetchExistingTables();
+  const { byTable, failures } = validateMetadata(rows, existingTables);
   printMetadata(byTable);
 
   if (failures.length > 0) {
@@ -263,3 +303,5 @@ try {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }
+
+

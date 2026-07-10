@@ -1,0 +1,83 @@
+# Popeye gateway spend ledger semantic model (Stage 1 extension).
+# hometown reads this ledger through ekg_cube_reader and joins it to
+# answer traces by request_id. Ledger-owned facts stay here: model,
+# provider/cloud, tokens, cost, and latency are joined, never copied.
+
+cubes:
+  - name: ai_token_usage
+    title: AI Token Usage
+    description: Governed read model over the Popeye gateway spend ledger for chargeback and answer-cost provenance.
+    sql: >
+      SELECT
+        request_id,
+        api_key_alias AS app_id,
+        user_id,
+        spend_logs_metadata->>'tenant_id' AS tenant_id,
+        spend_logs_metadata->>'feature_tag' AS feature_tag,
+        model,
+        custom_llm_provider AS provider,
+        spend AS cost_usd,
+        prompt_tokens,
+        completion_tokens,
+        total_tokens,
+        latency,
+        startTime AS created_at
+      FROM public."LiteLLM_SpendLogs"
+
+    dimensions:
+      - name: request_id
+        sql: request_id
+        type: string
+        primary_key: true
+
+      - name: app_id
+        sql: app_id
+        type: string
+
+      - name: user_id
+        sql: user_id
+        type: string
+
+      - name: tenant_id
+        sql: tenant_id
+        type: string
+
+      - name: feature_tag
+        sql: feature_tag
+        type: string
+
+      - name: model
+        sql: model
+        type: string
+
+      - name: provider
+        sql: provider
+        type: string
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+    measures:
+      - name: request_count
+        type: count
+
+      - name: total_cost_usd
+        sql: cost_usd
+        type: sum
+
+      - name: total_tokens
+        sql: total_tokens
+        type: sum
+
+      - name: prompt_tokens
+        sql: prompt_tokens
+        type: sum
+
+      - name: completion_tokens
+        sql: completion_tokens
+        type: sum
+
+      - name: avg_latency
+        sql: latency
+        type: avg

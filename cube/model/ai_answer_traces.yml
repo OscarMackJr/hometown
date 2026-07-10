@@ -1,0 +1,79 @@
+# Answer provenance semantic model (POC A).
+# Joins the popeye ledger on primary_request_id: evidence and policy
+# from the trace, model/tokens/cost from ai_token_usage — the "click an
+# answer, see its evidence and its price" query, governed.
+# Read-only via ekg_cube_reader (see sql/answer_trace_ddl.sql).
+
+cubes:
+  - name: ai_answer_traces
+    title: AI Answer Traces
+    description: Provenance envelopes for AI answers - what was asked, what governed evidence was used, and (by join) what it cost.
+    sql_table: public.answer_trace
+
+    joins:
+      - name: ai_token_usage
+        relationship: one_to_one
+        sql: "{CUBE}.primary_request_id = {ai_token_usage}.request_id"
+
+    dimensions:
+      - name: id
+        sql: trace_id
+        type: string
+        primary_key: true
+
+      - name: app_id
+        sql: app_id
+        type: string
+
+      - name: user_id
+        sql: user_id
+        type: string
+
+      - name: tenant_id
+        sql: tenant_id
+        type: string
+
+      - name: feature_tag
+        sql: feature_tag
+        type: string
+
+      - name: origin_org
+        description: Producing organization; the federation dimension (POC E).
+        sql: origin_org
+        type: string
+
+      - name: target_integration
+        sql: target_integration
+        type: string
+
+      - name: primary_request_id
+        sql: primary_request_id
+        type: string
+
+      - name: answer_hash
+        sql: answer_hash
+        type: string
+
+      - name: created_at
+        sql: created_at
+        type: time
+
+    measures:
+      - name: answer_count
+        type: count
+
+      - name: avg_evidence_count
+        sql: evidence_count
+        type: avg
+
+      - name: ungrounded_answers
+        description: Answers produced with zero governed evidence records - the automatic groundedness flag.
+        sql: trace_id
+        type: count
+        filters:
+          - sql: "{CUBE}.evidence_count = 0"
+
+    segments:
+      - name: federated
+        description: Traces produced by another organization (POC E exchange).
+        sql: "{CUBE}.origin_org <> 'twg'"
