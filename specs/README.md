@@ -16,3 +16,4 @@ This directory contains source-controlled specifications for the Enterprise Know
 - [Intrepid Loan Engine Integration Notes v0.1](./INTREPID_LOAN_ENGINE_INTEGRATION_NOTES_v0.1.md)
 - [Intrepid Sandbox Schema Mapping Contract v0.1](./INTREPID_SANDBOX_SCHEMA_MAPPING_v0.1.md)
 - [Answer Trace Envelope v0.1](./ANSWER_TRACE_ENVELOPE_v0.1.md)
+- [hometown Registration For POC A](./POC_A_HOMETOWN_REGISTRATION.md)

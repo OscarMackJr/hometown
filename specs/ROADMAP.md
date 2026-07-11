@@ -19,6 +19,8 @@ Use these Markdown specs for detail:
 - [Nexus CRM Integration Notes](./NEXUS_CRM_INTEGRATION_NOTES_v0.1.md) defines the CRM integration boundary, authorization constraints, semantic mappings, and first CRM GraphRAG slice.
 - [Intrepid Loan Engine Integration Notes](./INTREPID_LOAN_ENGINE_INTEGRATION_NOTES_v0.1.md) defines the Intrepid domain, tenant safety requirements, semantic mappings, and first run-context slice.
 - [Intrepid Sandbox Schema Mapping Contract](./INTREPID_SANDBOX_SCHEMA_MAPPING_v0.1.md) defines the non-production database contract required before Cube-backed Intrepid reads are trusted.
+- [Answer Trace Envelope v0.1](./ANSWER_TRACE_ENVELOPE_v0.1.md) defines the POC A answer provenance contract.
+- [hometown Registration For POC A](./POC_A_HOMETOWN_REGISTRATION.md) registers Answer Provenance as a hometown roadmap stage, not a new repository.
 - [STATE](./STATE.md) records the current implementation state and the next resumption tasks.
 
 The historical Word document remains background material only. Future roadmap updates should happen here.
@@ -128,32 +130,54 @@ Exit criteria:
 - Private deal and org-scope authorization rules are covered by tests.
 - The GraphRAG payload includes explicit lineage and redaction behavior.
 
-### Stage 4: Cross-Domain GraphRAG Slice
+### Stage 4: Answer Provenance (Answer Trace Envelope)
 
-Goal: combine verified context from more than one domain before prompt construction.
+Goal: make every AI answer explainable after the fact: evidence, prompt shape, model calls, and, by ledger join, cost.
 
-Current status: planned.
+Current status: chartered as Popeye program POC A and owned by this repository.
 
-Candidate first business question:
+Scope:
 
-> For this CRM company, what cross-divisional context changes the risk, opportunity, or servicing view?
+- Land the Answer Trace Envelope contract beside the semantic record contract and validate it in CI.
+- Apply `sql/answer_trace_ddl.sql`; keep trace writes append-only by granting the writer role INSERT only and granting `ekg_cube_reader` SELECT.
+- Implement `IAnswerTraceWriter` in the engine query path after the final model call and before answer release. Trace write failures alarm but do not block the answer path.
+- Maintain `cube/model/ai_answer_traces.yml` with the `ai_token_usage` join on `primary_request_id`.
+- Add `verify:trace:contract` and `verify:trace:reconciliation` to the validation gate.
+- Demonstrate one CRM-style answer traced back to tenant-scoped evidence and joined cost through a governed query.
 
-Implementation sequence:
+Guardrails:
 
-1. Resolve the canonical enterprise customer identity across CRM, ledger, and Intrepid where possible.
-2. Retrieve authorized CRM context.
-3. Retrieve ledger or Intrepid context through tenant-safe semantic records.
-4. Build a compact graph context payload with relationships and source lineage.
-5. Send the verified payload to the selected LLM provider.
-6. Store trace metadata for audit and support.
+- Store references and hashes only; do not store record bodies, prompt text, or completion text.
+- Policy-gate `query.text` and `retrieval.cubeQuery` per feature tag; hashes are always stored.
+- Treat traces as append-only. Corrections are new traces.
+- Join ledger-owned facts on `primary_request_id`; do not copy model, provider, token, cost, or latency fields into the trace store.
 
 Exit criteria:
 
-- The prompt payload is built only from validated semantic records.
-- The LLM is instructed not to invent missing fields or unsupported relationships.
-- Trace metadata records which entities and relationships informed the response.
+- A GraphRAG answer produces a validated trace with at least one evidence record and a resolvable ledger join.
+- The `ungrounded_answers` measure returns correct results against seeded traces, including one deliberate zero-evidence trace.
+- A trace-store outage test proves answers continue, an alarm fires, and reconciliation quantifies the gap after recovery.
+- Empty `policy` and `signature` slots round-trip through validation for POC B and future federation compatibility.
 
-### Stage 5: MVP Shared Service
+### Stage 5: Governed Semantic Access
+
+Goal: apply identity-driven authorization to semantic queries so user and tenant policy controls are structural, auditable, and visible in answer traces.
+
+Current status: chartered as Popeye program POC B and dependent on Entra-driven semantic authorization.
+
+Scope:
+
+- Map Entra groups to Cube security contexts.
+- Enforce tenant filters as non-removable policy, starting with Intrepid's tenant dimension.
+- Prove the pattern on Intrepid plus one CRM visibility rule.
+- Audit allowed and denied context requests into the Stage 4 trace store by populating the `policy` block without a schema bump.
+
+Exit criteria:
+
+- The same question from two differently entitled identities returns correctly different evidence sets, and both outcomes are visible in traces.
+- A denied request produces an audited denial, not a silent empty result.
+
+### Stage 6: Cross-Domain GraphRAG And MVP Shared Service
 
 Goal: turn the POC into an operational semantic context service for initial enterprise AI workflows.
 
@@ -161,6 +185,7 @@ Current status: future.
 
 Required capabilities:
 
+- Cross-domain GraphRAG over verified CRM, ledger, and Intrepid context.
 - Managed Cube deployment in AWS or Azure.
 - Production secret management outside source control.
 - Environment-specific source configuration.
@@ -183,11 +208,12 @@ Exit criteria:
 - First production latency target for CRM context lookup.
 - Whether the MVP needs RDF/OWL export or Cube semantic models are enough for the first release.
 - Canonical enterprise customer identity across CRM, ledger, and Intrepid.
-- Storage location and retention policy for GraphRAG trace metadata.
-- Production authorization model for cross-divisional context.
+- Retention and residency policy for Answer Trace Envelope records.
+- Per-feature-tag policy registry for `query.text` and `retrieval.cubeQuery`.
+- Production authorization model details for cross-divisional context beyond the Stage 5 POC.
 
 ## Current Priority
 
 The next best engineering move is the Intrepid non-production slice. It has the most complete source-controlled contract and the clearest verification path.
 
-After that, return to the Nexus CRM context slice so the original CRM-centered roadmap produces a user-facing GraphRAG capability.
+In parallel, keep the Stage 1 Popeye reporting extension unblocked. After Stage 2, return to the Nexus CRM context slice, then wire that GraphRAG path into Stage 4 Answer Provenance.
