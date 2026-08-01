@@ -99,13 +99,13 @@ Set `INTREPID_SANDBOX_RUN_ID` when you want the query to assert a specific run i
 
 ### Sandbox Schema Mapping Verification
 
-Before treating a non-production Intrepid database as compatible with the Cube models, set `INTREPID_SANDBOX_VERIFY=non-production` in local configuration and run:
+The default sandbox mapping verifier is static and CI-safe. It checks the smoke schema and Cube model contract without connecting to a database:
 
 ```bash
 npm run verify:intrepid:sandbox-mapping
 ```
 
-The verifier reads only Postgres metadata from `information_schema.columns`, prints table and column names, and fails if the required `loan_run`, `loan_fact`, `loan_exceptions`, or `portfolio_exceptions` contract is missing. The mapping contract lives in the specs index.
+For a non-production Intrepid database comparison, set `INTREPID_SANDBOX_VERIFY=non-production` in local configuration and run `npm run verify:intrepid:sandbox-mapping -- --live`. Live mode reads only Postgres metadata from `information_schema.columns`, prints table and column names, and fails if the required `loan_run`, `loan_fact`, `loan_exceptions`, or `portfolio_exceptions` contract is missing. The mapping contract lives in the specs index.
 
 When the POC database is the local Docker container, avoid Windows host-name and `localhost` ambiguity by running the Docker-backed verifier instead:
 
@@ -145,6 +145,8 @@ SELECT set_config('app.current_tenant_id', '<tenant uuid>', false);
 
 The local smoke schema enables and forces RLS on `public.loan_run`, `public.loan_fact`, `public.loan_exceptions`, and `public.portfolio_exceptions`. Policies fail closed: when `app.current_tenant_id` is absent, `ekg_cube_reader` sees zero tenant-scoped rows. The reader role must not own those tables, must not be a superuser, and must not have `BYPASSRLS`.
 
+The disposable smoke schema creates `ekg_cube_reader` with the explicit local-only password `intrepid_smoke` because Cube connects over TCP inside the smoke Compose profile. The reusable non-production migration creates `ekg_cube_reader` as a `NOLOGIN` grant role when absent; environment-specific login users should be bound to that role through the owning deployment and secret-management path.
+
 The existing Cube tenant filters remain the semantic enforcement layer. The local Intrepid Compose profiles set `PGOPTIONS=-c app.current_tenant_id=<tenant uuid>` for single-tenant POC runs. A production Cube profile still needs a per-request connection/session strategy to set `app.current_tenant_id` for each tenant request before relying on forced RLS in the Cube request path.
 
 ## Cube-Backed Intrepid Adapter
@@ -155,13 +157,13 @@ The Intrepid integration defaults to deterministic mock mode so CI does not requ
 INTREPID_INTEGRATION_MODE=mock
 ```
 
-For local POC verification, start Cube against the local Docker Postgres profile, then run:
+The default adapter verifier is static and CI-safe. For local POC live verification, start Cube against the local Docker Postgres profile, then run `npm run verify:intrepid:cube-adapter -- --live`.
 
 ```bash
 npm run verify:intrepid:cube-adapter
 ```
 
-That script builds the TypeScript adapter, loads local values from `cube/.env`, sets `INTREPID_INTEGRATION_MODE=cube`, calls the `intrepid_loan_engine` integration, and prints the resulting `SemanticRecord`.
+The static verifier builds the TypeScript adapter and checks the tenant-scoped Cube query contract. Live mode loads local values from `cube/.env`, sets `INTREPID_INTEGRATION_MODE=cube`, calls the `intrepid_loan_engine` integration, and prints the resulting `SemanticRecord`.
 For an end-to-end local proof through the full Dark Factory evaluation rig, run:
 
 ```bash
@@ -187,4 +189,3 @@ The Cube scaffold does not yet connect to real CRM, ledger, or Intrepid database
 ## Next Step
 
 After this scaffold lands, the next slice should replace the smoke schema with a non-production Cube connection profile against sandbox Intrepid data. Intrepid live connectivity should preserve tenant context through row-level security or explicit `tenant_id` filters.
-

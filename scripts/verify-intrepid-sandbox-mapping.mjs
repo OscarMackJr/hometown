@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const envPath = path.join(process.cwd(), 'cube', '.env');
-const verifyMode = process.argv.includes('--docker') ? 'docker' : 'psql';
+const verifyMode = process.argv.includes('--docker') ? 'docker' : process.argv.includes('--live') ? 'psql' : 'static';
 const requiredEnvVarsByMode = {
   psql: [
     'INTREPID_POSTGRES_HOST',
@@ -84,6 +84,10 @@ const expectedSchema = {
   ]
 };
 
+function read(relativePath) {
+  return fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
+}
+
 function loadLocalEnv() {
   if (!fs.existsSync(envPath)) return;
 
@@ -124,6 +128,42 @@ function sqlLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+function verifyStaticContract() {
+  const failures = [];
+  const smokeSchema = read('cube/smoke/intrepid-postgres/init/001_schema.sql');
+  const cubeModels = [
+    'cube/model/intrepid_loan_runs.yml',
+    'cube/model/intrepid_loans.yml',
+    'cube/model/intrepid_loan_exceptions.yml',
+    'cube/model/intrepid_portfolio_exceptions.yml'
+  ].map(read).join('\n');
+
+  for (const [tableName, columns] of Object.entries(expectedSchema)) {
+    if (!smokeSchema.includes(`CREATE TABLE public.${tableName}`)) failures.push(`Smoke schema missing table: public.${tableName}`);
+    for (const column of columns) {
+      if (!smokeSchema.includes(column)) failures.push(`Smoke schema missing expected column text: ${tableName}.${column}`);
+    }
+  }
+
+  for (const snippet of [
+    'name: tenant_id',
+    'name: run_id',
+    'tenant_id = {intrepid_loan_runs}.tenant_id',
+    'tenant_id = {intrepid_loans}.tenant_id',
+    'tenant_id = {intrepid_loan_exceptions}.tenant_id'
+  ]) {
+    if (!cubeModels.includes(snippet)) failures.push(`Cube Intrepid model contract missing: ${snippet}`);
+  }
+
+  if (failures.length > 0) {
+    console.error('Intrepid sandbox mapping static verification failed:');
+    for (const failure of failures) console.error(`- ${failure}`);
+    process.exit(1);
+  }
+
+  console.log('Intrepid sandbox mapping static verification passed. Use --live or --docker to compare against a non-production database.');
+}
+
 function buildMetadataSql() {
   const tableList = Object.keys(expectedSchema).map(sqlLiteral).join(', ');
   return `
@@ -152,7 +192,6 @@ function fetchColumnMetadata() {
       return { tableName, columnName, dataType, isNullable };
     });
 }
-
 
 function buildTableExistenceSql() {
   const tableList = Object.keys(expectedSchema).map(sqlLiteral).join(', ');
@@ -184,6 +223,7 @@ function fetchExistingTables() {
       })
   );
 }
+
 function runLocalPsql(sql) {
   const result = spawnSync('psql', [
     '--host', process.env.INTREPID_POSTGRES_HOST,
@@ -283,7 +323,7 @@ function printMetadata(byTable) {
   }
 }
 
-try {
+function verifyDatabaseMapping() {
   loadLocalEnv();
   assertRequiredEnv();
   const rows = fetchColumnMetadata();
@@ -298,10 +338,16 @@ try {
   }
 
   console.log('\nIntrepid sandbox mapping verification passed.');
+}
+
+try {
+  if (verifyMode === 'static') {
+    verifyStaticContract();
+  } else {
+    verifyDatabaseMapping();
+  }
 } catch (error) {
   console.error('Intrepid sandbox mapping verification failed before completion.');
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }
-
-

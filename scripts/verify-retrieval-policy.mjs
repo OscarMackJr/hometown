@@ -6,6 +6,7 @@ import {
   listFeatureDegradationPolicies,
   listRetrievalTierPolicies
 } from '../dist/core/retrieval-policy.js';
+import { canonicalize, hashSemanticRecord } from '../dist/core/hash.js';
 
 const root = process.cwd();
 const failures = [];
@@ -104,6 +105,57 @@ function verifyPolicyRegistry() {
   }
 }
 
+function verifyCanonicalHashDeterminism() {
+  const left = {
+    entityId: 'entity-1',
+    entityName: 'Entity One',
+    attributes: {
+      zeta: 1,
+      Alpha: 2,
+      nested: {
+        b: true,
+        a: false
+      }
+    },
+    relationships: [
+      {
+        relation: 'RELATES_TO',
+        targetEntity: 'entity-2',
+        sourceNode: 'source-a',
+        metadata: {
+          beta: 'b',
+          alpha: 'a'
+        }
+      }
+    ]
+  };
+  const right = {
+    relationships: [
+      {
+        metadata: {
+          alpha: 'a',
+          beta: 'b'
+        },
+        sourceNode: 'source-a',
+        targetEntity: 'entity-2',
+        relation: 'RELATES_TO'
+      }
+    ],
+    attributes: {
+      nested: {
+        a: false,
+        b: true
+      },
+      Alpha: 2,
+      zeta: 1
+    },
+    entityName: 'Entity One',
+    entityId: 'entity-1'
+  };
+
+  assert(canonicalize(left) === canonicalize(right), 'canonical JSON should be stable across object key insertion order');
+  assert(hashSemanticRecord(left) === hashSemanticRecord(right), 'semantic record hash should be stable across object key insertion order');
+}
 async function verifyTimeoutAttempt() {
   const factory = new DarkFactoryEngine();
   factory.registerIntegration({
@@ -189,6 +241,7 @@ async function verifyOkPath() {
 verifySourceContracts();
 verifyTierCompleteness();
 verifyPolicyRegistry();
+verifyCanonicalHashDeterminism();
 await verifyTimeoutAttempt();
 await verifyFailClosedError();
 await verifyDegradeWithDisclosure();

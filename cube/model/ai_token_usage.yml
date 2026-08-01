@@ -10,18 +10,20 @@ cubes:
     sql: >
       SELECT
         request_id,
-        api_key_alias AS app_id,
-        user_id,
-        spend_logs_metadata->>'tenant_id' AS tenant_id,
-        spend_logs_metadata->>'feature_tag' AS feature_tag,
+        team_id AS app_id,
+        "user" AS user_id,
+        metadata->'spend_logs_metadata'->>'tenant_id' AS tenant_id,
+        metadata->'spend_logs_metadata'->>'feature_tag' AS feature_tag,
+        metadata->'spend_logs_metadata'->>'agent_id' AS agent_id,
         model,
         custom_llm_provider AS provider,
+        custom_llm_provider AS cloud,
         spend AS cost_usd,
         prompt_tokens,
         completion_tokens,
         total_tokens,
-        latency,
-        startTime AS created_at
+        request_duration_ms AS latency,
+        "startTime" AS created_at
       FROM public."LiteLLM_SpendLogs"
 
     dimensions:
@@ -46,12 +48,20 @@ cubes:
         sql: feature_tag
         type: string
 
+      - name: agent_id
+        sql: agent_id
+        type: string
+
       - name: model
         sql: model
         type: string
 
       - name: provider
         sql: provider
+        type: string
+
+      - name: cloud
+        sql: cloud
         type: string
 
       - name: created_at
@@ -81,3 +91,8 @@ cubes:
       - name: avg_latency
         sql: latency
         type: avg
+
+    segments:
+      - name: desktop_agent_traffic
+        description: Gateway traffic attributed to desktop agent clients through spend_logs_metadata.agent_id.
+        sql: "{CUBE}.agent_id IS NOT NULL"

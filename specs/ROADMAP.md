@@ -90,6 +90,9 @@ Recommended path:
 4. Land `cube/model/ai_answer_traces.yml` with the `ai_token_usage` join.
 5. Add `verify:trace:contract` and `verify:trace:reconciliation` to the validation gate.
 
+Current implementation note: the shipped `FileAnswerTraceWriter` is a CI/local scaffold that appends JSONL and is useful for contract verification. It is not the immutable Postgres-backed writer described by the production provenance story. Until a Postgres writer lands, `sql/answer_trace_ddl.sql` and `cube/model/ai_answer_traces.yml` are contract/queryability artifacts, not proof that runtime traces are immutable.
+
+The current trace viewer is a read-only renderer/module over file-backed traces. It has no hosted HTTP surface, no Entra authentication, and no tenant-scoped trace read path. Those security requirements attach when a server/API surface is added.
 Guardrails: references and hashes only, never bodies; `query.text` and `retrieval.cubeQuery` policy-gated per feature tag; traces append-only; ledger facts joined, never copied.
 
 Exit criteria:
@@ -142,7 +145,7 @@ Exit criteria:
 
 ### Later, Referenced But Not Chartered Here
 
-- Minimal evaluation harness has been pulled forward locally: seed golden questions run through the governed traced answer path with deterministic stub scoring and cost-per-correct-answer from a ledger fixture. Full POC C continuous evaluation, larger owner-reviewed suites, and live judge routing remain future work.
+- Minimal evaluation harness has been pulled forward locally: seed golden questions run through the governed traced answer path with deterministic local stub scoring and cost-per-correct-answer from a ledger fixture. It does not route judge calls through the Popeye gateway and does not meter evaluation spend yet. Full POC C continuous evaluation, larger owner-reviewed suites, live judge routing, and eval spend attribution remain future work.
 - Federation (POC E) consumes the signed envelope; it earns its own repository only if the exchange becomes a deployable service.
 
 ## Sequencing Summary For The Team
@@ -161,3 +164,4 @@ Carried forward from the pre-integration roadmap. Items also tracked in STATE.md
 - Retention and residency policy for Answer Trace Envelope records (ATE spec section 7).
 - Per-feature-tag policy registry for `query.text` and `retrieval.cubeQuery` storage.
 - Production authorization model details for cross-divisional context beyond the Stage 5 POC.
+

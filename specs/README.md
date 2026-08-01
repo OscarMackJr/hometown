@@ -22,3 +22,10 @@ This directory contains source-controlled specifications for the Enterprise Know
 - [Semantic Path Degradation Policy v0.1](./SEMANTIC_PATH_DEGRADATION_v0.1.md)
 - [Answer Trace Viewer v0.1](./TRACE_VIEWER_v0.1.md)
 - [Minimal Evaluation Harness v0.1](./EVAL_HARNESS_MINIMAL_v0.1.md)
+
+## POC Scope Notes
+
+- `FileAnswerTraceWriter` is CI/local-only. It writes JSONL fixtures and does not provide immutable Postgres-backed provenance.
+- `sql/answer_trace_ddl.sql` and `cube/model/ai_answer_traces.yml` are trace-store contract/queryability artifacts until a Postgres writer is implemented.
+- The trace viewer is currently a read-only renderer/module over file-backed traces, not an authenticated hosted viewer. Entra auth and tenant-scoped trace reads apply when a server/API surface is added.
+- The eval harness uses a deterministic local stub judge. Live gateway-routed LLM judging and evaluation spend attribution are not implemented yet.

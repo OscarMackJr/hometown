@@ -30,7 +30,7 @@ Core engine:
 - Retrieval tier and feature degradation policy registry.
 - Governed retrieval path with timeout handling, retrieval attempts, context completeness, fail-closed behavior, and degrade-with-disclosure behavior.
 - Answer Trace Envelope schema at `ate/0.2`, with top-level retrieval/degradation metadata.
-- File-backed `IAnswerTraceWriter` implementation for CI-safe trace verification.
+- File-backed `IAnswerTraceWriter` implementation for CI/local trace verification only; it does not provide immutable Postgres-backed provenance.
 - Minimal traced answer path that writes ATE v0.2 traces without evidence bodies, prompt text, or answer text.
 - Canonical hash helpers for questions, answers, and semantic records.
 - Factory evaluation rig.
@@ -58,8 +58,8 @@ Trace and evaluation tools:
 
 - Trace contract verifier for ATE v0.2.
 - Trace reconciliation verifier that proves served answers write traces, deliberate missing traces are detected, and trace write failure is non-blocking.
-- Read-only file-backed Answer Trace Viewer module and verifier.
-- Minimal file-backed eval harness with seed golden questions, deterministic stub judge, trace-id references, and cost-per-correct-answer reporting from a local ledger fixture.
+- Read-only Answer Trace Viewer renderer/module over file-backed traces and verifier; it is not an authenticated hosted viewer.
+- Minimal file-backed eval harness with seed golden questions, deterministic local stub judge, trace-id references, and cost-per-correct-answer reporting from a local ledger fixture. It does not use a live gateway-routed LLM judge or meter evaluation spend through Popeye yet.
 
 Specs:
 
@@ -72,7 +72,7 @@ Specs:
 
 SQL:
 
-- Answer trace DDL exists for an append-only `answer_trace` store with ATE v0.2 query columns.
+- Answer trace DDL exists for an append-only `answer_trace` store with ATE v0.2 query columns. The SQL table and Cube model are contract/queryability artifacts until a Postgres trace writer is implemented.
 - Intrepid tenant RLS migration exists for non-production databases.
 - Eval harness DDL exists as a contract artifact for `eval_run` and `eval_result`.
 
@@ -86,14 +86,14 @@ The project remains before production GraphRAG/authorization hardening:
 - Stage 1 extension adds Popeye spend-ledger reporting through Cube. The `ai_token_usage` Cube model is present; live chargeback verification still depends on a connected Popeye gateway ledger table.
 - Stage 2, Intrepid non-production slice, has tenant-safety hardening in place for the local/sandbox pattern; source-owner load agreements remain a governance task.
 - Stage 3, Nexus CRM context slice, is planned but not yet implemented.
-- Stage 4, Answer Provenance, has a local traced answer path and verifiers; production GraphRAG integration remains future work.
+- Stage 4, Answer Provenance, has a local traced answer path and verifiers. The current writer/viewer/eval flow is file-backed and CI-safe; production GraphRAG integration, Postgres-backed trace writes, immutable runtime provenance, viewer auth, and tenant-scoped trace reads remain future work.
 - Stage 5, Governed Semantic Access, is chartered as Popeye POC B and still depends on Entra-driven semantic authorization.
 
 ## Next Task
 
 Recommended next engineering step: production-shape integration hardening, not another new demo surface.
 
-1. Decide whether to promote the file-backed trace/eval/viewer paths to Postgres-backed non-production paths.
+1. Implement a Postgres-backed trace writer before presenting provenance as immutable runtime history; the current `FileAnswerTraceWriter` is CI/local-only.
 2. Wire ATE v0.2 trace writing into the first real GraphRAG answer path when that path lands.
 3. Replace placeholder CRM and ledger mappings with source-specific models.
 4. Define production Cube session handling for `app.current_tenant_id` rather than relying on local `PGOPTIONS`.
@@ -126,6 +126,9 @@ npm run verify:trace:viewer
 npm run verify:eval:harness
 ```
 
+Pull-request CI runs contract-mode verifiers only: static/file-backed checks plus the disposable Intrepid Cube smoke test. Live gateway ledger checks remain opt-in via `npm run verify:gateway:ledger-model -- --live` or `GATEWAY_LEDGER_VERIFY=live`; Intrepid database-backed mapping remains opt-in via `npm run verify:intrepid:sandbox-mapping -- --live` or `npm run verify:intrepid:sandbox-mapping:docker`.
+
+`verify:intrepid:tenant-safety` is intentionally not part of pull-request CI because it expects a pre-existing non-production Docker Postgres/container, local `cube/.env`, and explicit `INTREPID_SANDBOX_VERIFY=non-production`. Run it before releases or sandbox demos where that local database profile is available.
 The sandbox and Cube-backed commands require local, non-production configuration. Do not add real credentials to source control.
 
 The gateway verifier commands exist. `query:gateway:chargeback` and live reconciliation require a connected non-production Popeye ledger table, `public."LiteLLM_SpendLogs"`.
@@ -147,7 +150,7 @@ The gateway verifier commands exist. `query:gateway:chargeback` and live reconci
 
 hometown owns Cube models, the semantic record contract, the Answer Trace Envelope contract, GraphRAG provenance, and decisions about what evidence means.
 
-Popeye owns the gateway, virtual keys, budgets, provider credentials, gateway infrastructure, endpoint policy, and popeye-infra Terraform.
+Popeye owns the gateway, virtual keys, budgets, provider credentials, gateway infrastructure, endpoint policy, and popeye-infra Terraform. hometown does not provision production CRM, ledger, gateway, or divisional database infrastructure.
 
 The join between the two systems is `request_id`. Popeye writes the spend ledger. hometown reads that ledger through `ekg_cube_reader` and joins it to answer traces through `primary_request_id`.
 
@@ -162,7 +165,7 @@ The local Docker Postgres instance is shared by four applications:
 
 The `nexus` database role is the local admin and database owner for this shared instance. Some loan_engine config files may mention `postgres` or `loan_app`, but those roles do not exist in this local Docker database.
 
-The `ekg_cube_reader` role is the read-only semantic-layer role used by hometown/Cube verification. It needs `USAGE` on the source schema and `SELECT` on the Intrepid source tables before `information_schema.columns` exposes the mapping metadata to the verifier. Its database password must match `INTREPID_POSTGRES_PASSWORD` in local `cube/.env` because Cube connects over TCP, unlike the Docker verifier's in-container `psql` path. For Cube running in Docker, `INTREPID_POSTGRES_HOST` must be `deploy-postgres-1`, not `127.0.0.1` or `localhost`.
+The `ekg_cube_reader` role is the read-only semantic-layer role used by hometown/Cube verification. It needs `USAGE` on the source schema and `SELECT` on the Intrepid source tables before `information_schema.columns` exposes the mapping metadata to the verifier. The disposable smoke schema creates `ekg_cube_reader` with the explicit local-only password `intrepid_smoke` for TCP access inside the smoke Compose profile. The reusable non-production RLS migration creates `ekg_cube_reader` as a `NOLOGIN` grant role when absent; environment-specific login users and credentials must be supplied by the owning deployment and secret-management path. For Cube running in Docker, `INTREPID_POSTGRES_HOST` must be `deploy-postgres-1`, not `127.0.0.1` or `localhost`.
 
 Tenant-scoped Intrepid tables use forced RLS with the session setting `app.current_tenant_id`. Local single-tenant Cube profiles use `PGOPTIONS` for this POC path; production needs a per-request session-setting strategy.
 
@@ -172,7 +175,10 @@ Tenant-scoped Intrepid tables use forced RLS with the session setting `app.curre
 - CRM Cube models are still placeholder-level and need source-specific mapping.
 - Ledger integration remains a placeholder and needs a real source contract.
 - Live Popeye gateway ledger data is not connected in this workspace; `ai_token_usage` is present but live chargeback queries need `public."LiteLLM_SpendLogs"`.
-- File-backed trace, viewer, and eval paths are CI-safe POC implementations; Postgres-backed non-production/runtime paths are not implemented yet.
+- File-backed trace, viewer, and eval paths are CI-safe POC implementations only; Postgres-backed non-production/runtime trace writes and immutable provenance are not implemented yet.
+- The trace SQL DDL and Cube answer-trace model are queryability contracts until a Postgres writer writes ATE v0.2 envelopes into `answer_trace`.
+- The trace viewer is currently a renderer/module over file-backed traces, not an authenticated hosted service; Entra auth and tenant-scoped trace reads attach when a server/API surface is added.
+- The eval harness uses deterministic local stub judging; live gateway-routed judge calls and evaluation spend attribution are not implemented yet.
 - Governed semantic access through Entra groups is planned but not implemented.
 - Managed cloud deployment target is undecided.
 - LLM provider integration is undecided.
