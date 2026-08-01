@@ -1,0 +1,5 @@
+# Superseded Terraform Sketch
+
+This historical file was moved out of `infra/` because hometown should not provision production CRM or ledger databases. The previous version also contained hardcoded database passwords; those values were removed on 2026-08-01.
+
+No runnable Terraform is retained here. See `HOMETOWN_INFRA_TERRAFORM_SUPERSEDED_v0.1.md` for the current boundary note.
