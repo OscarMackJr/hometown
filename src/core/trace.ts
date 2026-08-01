@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
-// Answer Trace Envelope (ATE) v0.1 — the machine-canonical form of
-// specs/ANSWER_TRACE_ENVELOPE_v0.1.md. Sits beside SemanticRecordSchema
-// and is enforced by the same runtime validation gate.
+// Answer Trace Envelope (ATE) v0.2 — the machine-canonical form of
+// specs/ANSWER_TRACE_ENVELOPE_v0.1.md plus the retrieval/degradation
+// additions from specs/SEMANTIC_PATH_DEGRADATION_v0.1.md.
 //
 // Design rules (spec section 3):
 // 1. Join, never copy: ledger-owned facts (model, tokens, cost) are
@@ -12,9 +12,21 @@ import { z } from 'zod';
 // 3. Append-only, immutable.
 // 4. query.text / retrieval.cubeQuery are policy-gated per featureTag.
 
-export const ATE_SCHEMA_VERSION = 'ate/0.1' as const;
+export const ATE_SCHEMA_VERSION = 'ate/0.2' as const;
 
 const Sha256Hex = z.string().regex(/^[a-f0-9]{64}$/, 'expected lowercase sha-256 hex');
+
+export const RetrievalAttemptSchema = z.object({
+  source: z.string(),
+  status: z.enum(['ok', 'timeout', 'error', 'empty']),
+  latencyMs: z.number().int().nonnegative()
+});
+
+export const TraceRetrievalSchema = z.object({
+  attempted: z.array(RetrievalAttemptSchema),
+  degradationMode: z.enum(['fail_closed', 'degrade_with_disclosure']),
+  contextComplete: z.boolean()
+});
 
 export const EvidenceItemSchema = z.object({
   integrationId: z.string(),
@@ -59,6 +71,11 @@ export const AnswerTraceSchema = z
       targetIntegrationId: z.string(),
       targetEntityId: z.string().optional()
     }),
+
+    // Top-level retrieval status records what was attempted, not just
+    // which evidence made it into the prompt. This distinguishes empty
+    // evidence from partial or failed context retrieval.
+    retrieval: TraceRetrievalSchema,
 
     // Empty array = answer produced with no governed evidence: a
     // queryable fact POC C treats as an automatic groundedness flag.
@@ -142,6 +159,8 @@ export const AnswerTraceSchema = z
 
 export type AnswerTrace = z.infer<typeof AnswerTraceSchema>;
 export type EvidenceItem = z.infer<typeof EvidenceItemSchema>;
+export type TraceRetrieval = z.infer<typeof TraceRetrievalSchema>;
+export type TraceRetrievalAttempt = z.infer<typeof RetrievalAttemptSchema>;
 
 // Writer contract (spec section 5): the engine calls this after the
 // final model call and before releasing the answer. A write failure is

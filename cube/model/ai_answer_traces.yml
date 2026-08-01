@@ -7,7 +7,7 @@
 cubes:
   - name: ai_answer_traces
     title: AI Answer Traces
-    description: Provenance envelopes for AI answers - what was asked, what governed evidence was used, and (by join) what it cost.
+    description: Provenance envelopes for AI answers - what was asked, what governed evidence was used, whether retrieval was complete, and (by join) what it cost.
     sql_table: public.answer_trace
 
     joins:
@@ -54,6 +54,16 @@ cubes:
         sql: answer_hash
         type: string
 
+      - name: context_complete
+        description: False when one or more attempted/required retrieval paths were incomplete.
+        sql: context_complete
+        type: boolean
+
+      - name: degradation_mode
+        description: Declared semantic degradation policy used for the answer.
+        sql: degradation_mode
+        type: string
+
       - name: created_at
         sql: created_at
         type: time
@@ -73,7 +83,23 @@ cubes:
         filters:
           - sql: "{CUBE}.evidence_count = 0"
 
+      - name: partial_context_answers
+        description: Answers whose retrieval context was incomplete.
+        sql: trace_id
+        type: count
+        filters:
+          - sql: "{CUBE}.context_complete = false"
+
+      - name: partial_context_rate
+        description: Ratio of answers with incomplete retrieval context to all answers in the query scope.
+        sql: "1.0 * {partial_context_answers} / NULLIF({answer_count}, 0)"
+        type: number
+
     segments:
       - name: federated
         description: Traces produced by another organization (POC E exchange).
         sql: "{CUBE}.origin_org <> 'twg'"
+
+      - name: partial_context
+        description: Traces where one or more retrieval paths were incomplete.
+        sql: "{CUBE}.context_complete = false"
