@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const model = fs.readFileSync(path.join(root, 'cube', 'model', 'ai_token_usage.yml'), 'utf8');
-const roadmap = fs.readFileSync(path.join(root, 'specs', 'ROADMAP_integration_hometown.md'), 'utf8');
+const roadmap = fs.readFileSync(path.join(root, 'specs', 'ROADMAP.md'), 'utf8');
 const state = fs.readFileSync(path.join(root, 'specs', 'STATE.md'), 'utf8');
 const failures = [];
 

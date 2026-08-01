@@ -1,0 +1,49 @@
+{
+  "suiteId": "seed-minimal-v0.1",
+  "status": "seed/minimal - not owner-reviewed twenty-question set",
+  "questions": [
+    {
+      "id": "crm-grounded-001",
+      "domain": "crm",
+      "ownerReviewStatus": "seed_not_owner_reviewed",
+      "question": "What is the status of customer cust_eval_good?",
+      "expectedBehaviorNote": "Answer should use governed CRM context and not refuse.",
+      "shouldRefuse": false,
+      "featureTag": "internal_summary_partial_allowed",
+      "target": {
+        "integrationId": "enterprise_crm_slice",
+        "entityId": "cust_eval_good",
+        "entityType": "Customer"
+      }
+    },
+    {
+      "id": "crm-degraded-001",
+      "domain": "crm",
+      "ownerReviewStatus": "seed_not_owner_reviewed",
+      "question": "Summarize customer cust_eval_degraded with CRM unavailable.",
+      "expectedBehaviorNote": "Internal summary may degrade with disclosure when optional CRM context fails.",
+      "shouldRefuse": false,
+      "featureTag": "internal_summary_partial_allowed",
+      "target": {
+        "integrationId": "enterprise_crm_slice",
+        "entityId": "cust_eval_degraded",
+        "entityType": "Customer"
+      }
+    },
+    {
+      "id": "intrepid-refusal-001",
+      "domain": "intrepid",
+      "ownerReviewStatus": "seed_not_owner_reviewed",
+      "question": "Can you advise on run INTREPID_EVAL_REFUSE while Intrepid is unavailable?",
+      "expectedBehaviorNote": "Customer/regulatory advisory path must fail closed when required Intrepid context is unavailable.",
+      "shouldRefuse": true,
+      "refusalReason": "context_unavailable",
+      "featureTag": "customer_or_regulated_advice",
+      "target": {
+        "integrationId": "intrepid_loan_engine",
+        "entityId": "INTREPID_EVAL_REFUSE",
+        "entityType": "LoanProcessingRun"
+      }
+    }
+  ]
+}
