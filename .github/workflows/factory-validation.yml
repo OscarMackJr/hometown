@@ -32,6 +32,39 @@ jobs:
       - name: Validate Cube scaffold
         run: npm run validate:cube
 
+      - name: Verify gateway access boundary
+        run: npm run verify:gateway:access
+
+      - name: Verify gateway ledger model
+        run: npm run verify:gateway:ledger-model
+
+      - name: Verify gateway attribution
+        run: npm run verify:gateway:attribution
+
+      - name: Verify gateway ledger reconciliation
+        run: npm run verify:gateway:ledger-reconciliation
+
+      - name: Verify trace contract
+        run: npm run verify:trace:contract
+
+      - name: Verify trace reconciliation
+        run: npm run verify:trace:reconciliation
+
+      - name: Verify retrieval policy
+        run: npm run verify:retrieval-policy
+
+      - name: Verify trace viewer
+        run: npm run verify:trace:viewer
+
+      - name: Verify eval harness
+        run: npm run verify:eval:harness
+
+      - name: Verify Intrepid Cube adapter contract
+        run: npm run verify:intrepid:cube-adapter
+
+      - name: Verify Intrepid sandbox mapping contract
+        run: npm run verify:intrepid:sandbox-mapping
+
       - name: Run Intrepid Cube smoke test
         run: npm run smoke:cube:intrepid
 
