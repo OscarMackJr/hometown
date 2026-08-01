@@ -100,19 +100,33 @@ INSERT INTO public.loan_run (
   completed_at,
   irr_target,
   notes
-) VALUES (
-  '11111111-1111-4111-8111-111111111111'::uuid,
-  'INTREPID_RUN_2026_Q2_001',
-  'SMOKE_PORTFOLIO',
-  'SUCCEEDED',
-  '2026-06-28',
-  '2026-06-28 10:00:00+00',
-  '2026-06-28 10:02:00+00',
-  '2026-06-28 10:01:00+00',
-  '2026-06-28 10:02:00+00',
-  0.0850,
-  'Disposable Cube smoke run'
-);
+) VALUES
+  (
+    '11111111-1111-4111-8111-111111111111'::uuid,
+    'INTREPID_RUN_2026_Q2_001',
+    'SMOKE_PORTFOLIO',
+    'SUCCEEDED',
+    '2026-06-28',
+    '2026-06-28 10:00:00+00',
+    '2026-06-28 10:02:00+00',
+    '2026-06-28 10:01:00+00',
+    '2026-06-28 10:02:00+00',
+    0.0850,
+    'Disposable Cube smoke run'
+  ),
+  (
+    '22222222-2222-4222-8222-222222222222'::uuid,
+    'INTREPID_RUN_2026_Q2_002',
+    'SMOKE_PORTFOLIO_TENANT_2',
+    'SUCCEEDED',
+    '2026-06-29',
+    '2026-06-29 10:00:00+00',
+    '2026-06-29 10:02:00+00',
+    '2026-06-29 10:01:00+00',
+    '2026-06-29 10:02:00+00',
+    0.0825,
+    'Disposable Cube smoke run for tenant isolation proof'
+  );
 
 INSERT INTO public.loan_fact (
   tenant_id,
@@ -127,7 +141,8 @@ INSERT INTO public.loan_fact (
   price_pct
 ) VALUES
   ('11111111-1111-4111-8111-111111111111'::uuid, 'INTREPID_RUN_2026_Q2_001', 'L1', 'ACTIVE', true, '2026-06-28 10:01:30+00', 250000.00, 240000.00, 235000.00, 0.9792),
-  ('11111111-1111-4111-8111-111111111111'::uuid, 'INTREPID_RUN_2026_Q2_001', 'L2', 'ACTIVE', false, '2026-06-28 10:01:45+00', 125000.00, 120000.00, 118500.00, 0.9875);
+  ('11111111-1111-4111-8111-111111111111'::uuid, 'INTREPID_RUN_2026_Q2_001', 'L2', 'ACTIVE', false, '2026-06-28 10:01:45+00', 125000.00, 120000.00, 118500.00, 0.9875),
+  ('22222222-2222-4222-8222-222222222222'::uuid, 'INTREPID_RUN_2026_Q2_002', 'L3', 'ACTIVE', true, '2026-06-29 10:01:30+00', 300000.00, 291000.00, 286000.00, 0.9828);
 
 INSERT INTO public.loan_exceptions (
   tenant_id,
@@ -145,23 +160,41 @@ INSERT INTO public.loan_exceptions (
   original_balance,
   purchase_price,
   balance_impact
-) VALUES (
-  '11111111-1111-4111-8111-111111111111'::uuid,
-  'INTREPID_RUN_2026_Q2_001',
-  'L1',
-  'RULE_X',
-  'UNDERWRITING',
-  'HIGH',
-  'Mismatch',
-  'dscr',
-  '2026-06-28 10:02:00+00',
-  1.250000,
-  1.100000,
-  -0.150000,
-  250000.00,
-  235000.00,
-  1234.56
-);
+) VALUES
+  (
+    '11111111-1111-4111-8111-111111111111'::uuid,
+    'INTREPID_RUN_2026_Q2_001',
+    'L1',
+    'RULE_X',
+    'UNDERWRITING',
+    'HIGH',
+    'Mismatch',
+    'dscr',
+    '2026-06-28 10:02:00+00',
+    1.250000,
+    1.100000,
+    -0.150000,
+    250000.00,
+    235000.00,
+    1234.56
+  ),
+  (
+    '22222222-2222-4222-8222-222222222222'::uuid,
+    'INTREPID_RUN_2026_Q2_002',
+    'L3',
+    'RULE_Y',
+    'UNDERWRITING',
+    'MEDIUM',
+    'Tenant 2 mismatch',
+    'ltv',
+    '2026-06-29 10:02:00+00',
+    0.800000,
+    0.870000,
+    0.070000,
+    300000.00,
+    286000.00,
+    777.77
+  );
 
 INSERT INTO public.portfolio_exceptions (
   tenant_id,
@@ -175,16 +208,67 @@ INSERT INTO public.portfolio_exceptions (
   balance_impact,
   severity,
   created_at
-) VALUES (
-  '11111111-1111-4111-8111-111111111111'::uuid,
-  'INTREPID_RUN_2026_Q2_001',
-  'P_RULE_1',
-  'PORTFOLIO',
-  'Prime',
-  100.0,
-  90.0,
-  -10.0,
-  555.55,
-  'MED',
-  '2026-06-28 10:02:15+00'
-);
+) VALUES
+  (
+    '11111111-1111-4111-8111-111111111111'::uuid,
+    'INTREPID_RUN_2026_Q2_001',
+    'P_RULE_1',
+    'PORTFOLIO',
+    'Prime',
+    100.0,
+    90.0,
+    -10.0,
+    555.55,
+    'MED',
+    '2026-06-28 10:02:15+00'
+  ),
+  (
+    '22222222-2222-4222-8222-222222222222'::uuid,
+    'INTREPID_RUN_2026_Q2_002',
+    'P_RULE_2',
+    'PORTFOLIO',
+    'Prime',
+    200.0,
+    190.0,
+    -10.0,
+    333.33,
+    'LOW',
+    '2026-06-29 10:02:15+00'
+  );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ekg_cube_reader') THEN
+    CREATE ROLE ekg_cube_reader LOGIN PASSWORD 'intrepid_smoke';
+  END IF;
+END $$;
+
+GRANT USAGE ON SCHEMA public TO ekg_cube_reader;
+GRANT SELECT ON public.loan_run TO ekg_cube_reader;
+GRANT SELECT ON public.loan_fact TO ekg_cube_reader;
+GRANT SELECT ON public.loan_exceptions TO ekg_cube_reader;
+GRANT SELECT ON public.portfolio_exceptions TO ekg_cube_reader;
+
+ALTER TABLE public.loan_run ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.loan_run FORCE ROW LEVEL SECURITY;
+CREATE POLICY loan_run_tenant_isolation ON public.loan_run
+  FOR SELECT TO ekg_cube_reader
+  USING (tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid);
+
+ALTER TABLE public.loan_fact ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.loan_fact FORCE ROW LEVEL SECURITY;
+CREATE POLICY loan_fact_tenant_isolation ON public.loan_fact
+  FOR SELECT TO ekg_cube_reader
+  USING (tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid);
+
+ALTER TABLE public.loan_exceptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.loan_exceptions FORCE ROW LEVEL SECURITY;
+CREATE POLICY loan_exceptions_tenant_isolation ON public.loan_exceptions
+  FOR SELECT TO ekg_cube_reader
+  USING (tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid);
+
+ALTER TABLE public.portfolio_exceptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.portfolio_exceptions FORCE ROW LEVEL SECURITY;
+CREATE POLICY portfolio_exceptions_tenant_isolation ON public.portfolio_exceptions
+  FOR SELECT TO ekg_cube_reader
+  USING (tenant_id = nullif(current_setting('app.current_tenant_id', true), '')::uuid);

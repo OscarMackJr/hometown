@@ -135,6 +135,17 @@ INTREPID_TENANT_ID=11111111-1111-4111-8111-111111111111
 
 Do not use `localhost` inside the Cube container for another Docker-hosted Postgres database. In that context, `localhost` points at the Cube container itself.
 
+### Tenant RLS Convention
+
+Tenant-scoped Intrepid tables use PostgreSQL row-level security as the database enforcement layer. The policy reads the tenant from the session setting `app.current_tenant_id`:
+
+```sql
+SELECT set_config('app.current_tenant_id', '<tenant uuid>', false);
+```
+
+The local smoke schema enables and forces RLS on `public.loan_run`, `public.loan_fact`, `public.loan_exceptions`, and `public.portfolio_exceptions`. Policies fail closed: when `app.current_tenant_id` is absent, `ekg_cube_reader` sees zero tenant-scoped rows. The reader role must not own those tables, must not be a superuser, and must not have `BYPASSRLS`.
+
+The existing Cube tenant filters remain the semantic enforcement layer. The local Intrepid Compose profiles set `PGOPTIONS=-c app.current_tenant_id=<tenant uuid>` for single-tenant POC runs. A production Cube profile still needs a per-request connection/session strategy to set `app.current_tenant_id` for each tenant request before relying on forced RLS in the Cube request path.
 
 ## Cube-Backed Intrepid Adapter
 

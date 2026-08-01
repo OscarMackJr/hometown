@@ -30,13 +30,14 @@ services:
       CUBEJS_DB_HOST: intrepid-postgres
       CUBEJS_DB_PORT: 5432
       CUBEJS_DB_NAME: intrepid_smoke
-      CUBEJS_DB_USER: intrepid_smoke
+      CUBEJS_DB_USER: ekg_cube_reader
       CUBEJS_DB_PASS: intrepid_smoke
-      CUBEJS_DB_URL: postgres://intrepid_smoke:intrepid_smoke@intrepid-postgres:5432/intrepid_smoke
+      CUBEJS_DB_URL: postgres://ekg_cube_reader:intrepid_smoke@intrepid-postgres:5432/intrepid_smoke
       CUBEJS_SQL_PORT: 15432
-      INTREPID_POSTGRES_URL: postgres://intrepid_smoke:intrepid_smoke@intrepid-postgres:5432/intrepid_smoke
+      INTREPID_POSTGRES_URL: postgres://ekg_cube_reader:intrepid_smoke@intrepid-postgres:5432/intrepid_smoke
       INTREPID_CUBE_SCHEMA: public
       INTREPID_TENANT_ID: 11111111-1111-4111-8111-111111111111
+      PGOPTIONS: '-c app.current_tenant_id=11111111-1111-4111-8111-111111111111'
     volumes:
       - .:/cube/conf
 
