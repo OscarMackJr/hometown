@@ -1,11 +1,17 @@
 -- Intrepid tenant isolation defense-in-depth migration.
 -- Applies the same forced RLS contract used by the local smoke seed to an
 -- existing non-production Intrepid-compatible Postgres database.
+--
+-- This migration creates ekg_cube_reader as a NOLOGIN grant role when it
+-- does not already exist. Production-like deployments should bind an
+-- environment-specific login/user to this role through their normal secret
+-- manager or managed identity flow; this file does not create passwordless
+-- production login credentials.
 
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ekg_cube_reader') THEN
-    CREATE ROLE ekg_cube_reader LOGIN;
+    CREATE ROLE ekg_cube_reader NOLOGIN;
   END IF;
 END $$;
 

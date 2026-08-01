@@ -118,11 +118,19 @@ function verifyRlsSourceContract() {
   ]) {
     requireIncludes(label, content, [
       tenantTwo,
-      'CREATE ROLE ekg_cube_reader LOGIN',
       "current_setting('app.current_tenant_id', true)",
       'ENABLE ROW LEVEL SECURITY',
       'FORCE ROW LEVEL SECURITY'
     ]);
+    if (label === 'Intrepid smoke RLS seed SQL') {
+      requireIncludes(label, content, ["CREATE ROLE ekg_cube_reader LOGIN PASSWORD 'intrepid_smoke'"]);
+    } else {
+      requireIncludes(label, content, [
+        'CREATE ROLE ekg_cube_reader NOLOGIN',
+        'does not create passwordless',
+        'environment-specific login/user'
+      ]);
+    }
     for (const table of tenantScopedTables) {
       requireIncludes(`${label} for ${table}`, content, [
         `ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`,
