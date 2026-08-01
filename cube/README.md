@@ -107,6 +107,14 @@ npm run verify:intrepid:sandbox-mapping
 
 The verifier reads only Postgres metadata from `information_schema.columns`, prints table and column names, and fails if the required `loan_run`, `loan_fact`, `loan_exceptions`, or `portfolio_exceptions` contract is missing. The mapping contract lives in the specs index.
 
+When the POC database is the local Docker container, avoid Windows host-name and `localhost` ambiguity by running the Docker-backed verifier instead:
+
+```bash
+npm run verify:intrepid:sandbox-mapping:docker
+```
+
+The Docker mode uses `docker exec` against `INTREPID_POSTGRES_CONTAINER`, defaulting to `deploy-postgres-1`, and runs the same read-only metadata check inside the Postgres container.
+
 ### Local Docker Postgres
 
 When the Intrepid POC database is another Docker service, put Cube on the same Docker network and use the Postgres container name as the host. The current sandbox compose profile joins the external `deploy_default` network, which works with the local Postgres container named `deploy-postgres-1`.
@@ -127,6 +135,17 @@ INTREPID_TENANT_ID=11111111-1111-4111-8111-111111111111
 
 Do not use `localhost` inside the Cube container for another Docker-hosted Postgres database. In that context, `localhost` points at the Cube container itself.
 
+### Tenant RLS Convention
+
+Tenant-scoped Intrepid tables use PostgreSQL row-level security as the database enforcement layer. The policy reads the tenant from the session setting `app.current_tenant_id`:
+
+```sql
+SELECT set_config('app.current_tenant_id', '<tenant uuid>', false);
+```
+
+The local smoke schema enables and forces RLS on `public.loan_run`, `public.loan_fact`, `public.loan_exceptions`, and `public.portfolio_exceptions`. Policies fail closed: when `app.current_tenant_id` is absent, `ekg_cube_reader` sees zero tenant-scoped rows. The reader role must not own those tables, must not be a superuser, and must not have `BYPASSRLS`.
+
+The existing Cube tenant filters remain the semantic enforcement layer. The local Intrepid Compose profiles set `PGOPTIONS=-c app.current_tenant_id=<tenant uuid>` for single-tenant POC runs. A production Cube profile still needs a per-request connection/session strategy to set `app.current_tenant_id` for each tenant request before relying on forced RLS in the Cube request path.
 
 ## Cube-Backed Intrepid Adapter
 

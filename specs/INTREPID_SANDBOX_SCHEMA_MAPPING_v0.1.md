@@ -28,6 +28,7 @@ INTREPID_POSTGRES_PORT=
 INTREPID_POSTGRES_DB=
 INTREPID_POSTGRES_USER=
 INTREPID_POSTGRES_PASSWORD=
+INTREPID_POSTGRES_CONTAINER=
 INTREPID_CUBE_SCHEMA=
 INTREPID_TENANT_ID=
 INTREPID_SANDBOX_VERIFY=non-production
@@ -148,7 +149,7 @@ The Cube-backed Intrepid adapter converts the verified tables into a `LoanProces
 
 ## Read-Only Verification
 
-Install PostgreSQL client tools so `psql` is available on `PATH`, then run:
+Install PostgreSQL client tools so `psql` is available on `PATH`, then run the direct verifier:
 
 ```bash
 npm run verify:intrepid:sandbox-mapping
@@ -163,8 +164,25 @@ The verifier:
 - Prints table and column metadata, but never prints the password.
 - Fails if any required table or column is missing.
 
-This command is intentionally local-only. It must not be added to GitHub Actions until a disposable or managed non-production database is available to the hosted runner.
+For the local Docker POC database, run the Docker-backed verifier:
 
+```bash
+npm run verify:intrepid:sandbox-mapping:docker
+```
+
+Docker mode uses `docker exec` against `INTREPID_POSTGRES_CONTAINER`, defaulting to `deploy-postgres-1`, and runs the same read-only metadata query inside the Postgres container. Use this when Windows `localhost` or Docker service-name resolution does not point to the expected database.
+
+These commands are intentionally local-only. They must not be added to GitHub Actions until a disposable or managed non-production database is available to the hosted runner.
+
+## Tenant Safety Verification
+
+Run the tenant-safety verifier after Cube model or Intrepid adapter changes:
+
+```bash
+npm run verify:intrepid:tenant-safety
+```
+
+The verifier is static and CI-safe. It checks that Intrepid Cube joins include `tenant_id` and that the Cube-backed adapter sends explicit tenant filters for run, loan, and exception queries. This does not replace database RLS; it preserves the POC guardrail that semantic reads must be tenant-scoped even before production RLS/session-context wiring is finalized.
 ## CI Contract
 
 Hosted CI should continue to validate only deterministic assets:

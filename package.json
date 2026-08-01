@@ -13,7 +13,19 @@
     "query:cube:intrepid:sandbox": "node scripts/cube-intrepid-sandbox-query.mjs",
     "verify:intrepid:cube-adapter": "npm run build && node scripts/verify-intrepid-cube-adapter.mjs",
     "test:factory:intrepid-cube": "npm run build && node scripts/run-factory-intrepid-cube.mjs",
-    "verify:intrepid:sandbox-mapping": "node scripts/verify-intrepid-sandbox-mapping.mjs"
+    "verify:intrepid:sandbox-mapping": "node scripts/verify-intrepid-sandbox-mapping.mjs",
+    "verify:intrepid:sandbox-mapping:docker": "node scripts/verify-intrepid-sandbox-mapping.mjs --docker",
+    "verify:intrepid:tenant-safety": "node scripts/verify-intrepid-tenant-safety.mjs",
+    "verify:gateway:ledger-model": "node scripts/verify-gateway-ledger-model.mjs",
+    "query:gateway:chargeback": "node scripts/query-gateway-chargeback.mjs",
+    "verify:gateway:ledger-reconciliation": "node scripts/verify-gateway-ledger-reconciliation.mjs",
+    "verify:gateway:attribution": "node scripts/verify-gateway-attribution.mjs",
+    "verify:gateway:access": "node scripts/verify-gateway-access.mjs",
+    "verify:trace:contract": "npm run build && node scripts/verify-trace-contract.mjs",
+    "verify:trace:reconciliation": "node scripts/verify-trace-reconciliation.mjs",
+    "verify:retrieval-policy": "npm run build && node scripts/verify-retrieval-policy.mjs",
+    "verify:trace:viewer": "npm run build && node scripts/verify-trace-viewer.mjs",
+    "verify:eval:harness": "npm run build && node scripts/verify-eval-harness.mjs"
   },
   "dependencies": {
     "axios": "^1.7.0",

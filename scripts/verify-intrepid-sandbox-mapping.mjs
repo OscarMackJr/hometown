@@ -3,16 +3,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const envPath = path.join(process.cwd(), 'cube', '.env');
-const requiredEnvVars = [
-  'INTREPID_POSTGRES_HOST',
-  'INTREPID_POSTGRES_PORT',
-  'INTREPID_POSTGRES_DB',
-  'INTREPID_POSTGRES_USER',
-  'INTREPID_POSTGRES_PASSWORD',
-  'INTREPID_CUBE_SCHEMA',
-  'INTREPID_TENANT_ID',
-  'INTREPID_SANDBOX_VERIFY'
-];
+const verifyMode = process.argv.includes('--docker') ? 'docker' : 'psql';
+const requiredEnvVarsByMode = {
+  psql: [
+    'INTREPID_POSTGRES_HOST',
+    'INTREPID_POSTGRES_PORT',
+    'INTREPID_POSTGRES_DB',
+    'INTREPID_POSTGRES_USER',
+    'INTREPID_POSTGRES_PASSWORD',
+    'INTREPID_CUBE_SCHEMA',
+    'INTREPID_TENANT_ID',
+    'INTREPID_SANDBOX_VERIFY'
+  ],
+  docker: [
+    'INTREPID_POSTGRES_DB',
+    'INTREPID_POSTGRES_USER',
+    'INTREPID_POSTGRES_PASSWORD',
+    'INTREPID_CUBE_SCHEMA',
+    'INTREPID_TENANT_ID',
+    'INTREPID_SANDBOX_VERIFY'
+  ]
+};
 
 const expectedSchema = {
   loan_run: [
@@ -91,7 +102,7 @@ function loadLocalEnv() {
 }
 
 function assertRequiredEnv() {
-  const missing = requiredEnvVars.filter((name) => !process.env[name]);
+  const missing = requiredEnvVarsByMode[verifyMode].filter((name) => !process.env[name]);
   if (missing.length > 0) {
     throw new Error(`Missing required sandbox mapping env var(s): ${missing.join(', ')}`);
   }
@@ -100,7 +111,7 @@ function assertRequiredEnv() {
     throw new Error('Refusing to connect. Set INTREPID_SANDBOX_VERIFY=non-production in cube/.env for sandbox verification.');
   }
 
-  if (!/^\d+$/.test(process.env.INTREPID_POSTGRES_PORT ?? '')) {
+  if (verifyMode === 'psql' && !/^\d+$/.test(process.env.INTREPID_POSTGRES_PORT ?? '')) {
     throw new Error('INTREPID_POSTGRES_PORT must be numeric.');
   }
 
@@ -113,16 +124,67 @@ function sqlLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-function fetchColumnMetadata() {
+function buildMetadataSql() {
   const tableList = Object.keys(expectedSchema).map(sqlLiteral).join(', ');
-  const sql = `
+  return `
 SELECT table_name, column_name, data_type, is_nullable
 FROM information_schema.columns
 WHERE table_schema = ${sqlLiteral(process.env.INTREPID_CUBE_SCHEMA)}
   AND table_name IN (${tableList})
 ORDER BY table_name, ordinal_position;
 `.trim();
+}
 
+function fetchColumnMetadata() {
+  const sql = buildMetadataSql();
+  const result = verifyMode === 'docker' ? runDockerPsql(sql) : runLocalPsql(sql);
+
+  if (result.status !== 0) {
+    throw new Error(`Sandbox metadata query failed. ${result.context} exit ${result.status}: ${result.stderr.trim()}`);
+  }
+
+  return result.stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [tableName, columnName, dataType, isNullable] = line.split('\t');
+      return { tableName, columnName, dataType, isNullable };
+    });
+}
+
+
+function buildTableExistenceSql() {
+  const tableList = Object.keys(expectedSchema).map(sqlLiteral).join(', ');
+  return `
+SELECT schemaname, tablename
+FROM pg_tables
+WHERE schemaname = ${sqlLiteral(process.env.INTREPID_CUBE_SCHEMA)}
+  AND tablename IN (${tableList})
+ORDER BY tablename;
+`.trim();
+}
+
+function fetchExistingTables() {
+  const sql = buildTableExistenceSql();
+  const result = verifyMode === 'docker' ? runDockerPsql(sql) : runLocalPsql(sql);
+
+  if (result.status !== 0) {
+    throw new Error(`Sandbox table existence query failed. ${result.context} exit ${result.status}: ${result.stderr.trim()}`);
+  }
+
+  return new Set(
+    result.stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [schemaName, tableName] = line.split('\t');
+        return `${schemaName}.${tableName}`;
+      })
+  );
+}
+function runLocalPsql(sql) {
   const result = spawnSync('psql', [
     '--host', process.env.INTREPID_POSTGRES_HOST,
     '--port', process.env.INTREPID_POSTGRES_PORT,
@@ -146,21 +208,37 @@ ORDER BY table_name, ordinal_position;
     throw new Error('psql was not found. Install PostgreSQL client tools or run this script from an environment that has psql on PATH.');
   }
 
-  if (result.status !== 0) {
-    throw new Error(`Sandbox metadata query failed. psql exit ${result.status}: ${result.stderr.trim()}`);
-  }
-
-  return result.stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [tableName, columnName, dataType, isNullable] = line.split('\t');
-      return { tableName, columnName, dataType, isNullable };
-    });
+  return { ...result, context: 'psql' };
 }
 
-function validateMetadata(rows) {
+function runDockerPsql(sql) {
+  const containerName = process.env.INTREPID_POSTGRES_CONTAINER || 'deploy-postgres-1';
+  const result = spawnSync('docker', [
+    'exec',
+    '-e',
+    `PGPASSWORD=${process.env.INTREPID_POSTGRES_PASSWORD}`,
+    containerName,
+    'psql',
+    '--dbname', process.env.INTREPID_POSTGRES_DB,
+    '--username', process.env.INTREPID_POSTGRES_USER,
+    '--no-password',
+    '--set', 'ON_ERROR_STOP=1',
+    '--tuples-only',
+    '--no-align',
+    '--field-separator', '\t',
+    '--command', sql
+  ], {
+    encoding: 'utf8'
+  });
+
+  if (result.error?.code === 'ENOENT') {
+    throw new Error('docker was not found. Start Docker Desktop or run the non-Docker verifier from an environment with psql on PATH.');
+  }
+
+  return { ...result, context: `docker exec ${containerName} psql` };
+}
+
+function validateMetadata(rows, existingTables) {
   const byTable = new Map();
   for (const row of rows) {
     if (!byTable.has(row.tableName)) byTable.set(row.tableName, []);
@@ -171,7 +249,15 @@ function validateMetadata(rows) {
   for (const [tableName, requiredColumns] of Object.entries(expectedSchema)) {
     const tableRows = byTable.get(tableName) ?? [];
     if (tableRows.length === 0) {
-      failures.push(`Missing table: ${process.env.INTREPID_CUBE_SCHEMA}.${tableName}`);
+      const qualifiedName = `${process.env.INTREPID_CUBE_SCHEMA}.${tableName}`;
+      if (existingTables.has(qualifiedName)) {
+        failures.push(
+          `Table exists but column metadata is not visible to ${process.env.INTREPID_POSTGRES_USER}: ${qualifiedName}. ` +
+          `Grant USAGE on schema ${process.env.INTREPID_CUBE_SCHEMA} and SELECT on ${qualifiedName}, or use a reader role with those privileges.`
+        );
+      } else {
+        failures.push(`Missing table: ${qualifiedName}`);
+      }
       continue;
     }
 
@@ -187,7 +273,7 @@ function validateMetadata(rows) {
 }
 
 function printMetadata(byTable) {
-  console.log('Intrepid sandbox schema metadata:');
+  console.log(`Intrepid sandbox schema metadata (${verifyMode} mode):`);
   for (const tableName of Object.keys(expectedSchema)) {
     const rows = byTable.get(tableName) ?? [];
     console.log(`\n${process.env.INTREPID_CUBE_SCHEMA}.${tableName}`);
@@ -201,7 +287,8 @@ try {
   loadLocalEnv();
   assertRequiredEnv();
   const rows = fetchColumnMetadata();
-  const { byTable, failures } = validateMetadata(rows);
+  const existingTables = fetchExistingTables();
+  const { byTable, failures } = validateMetadata(rows, existingTables);
   printMetadata(byTable);
 
   if (failures.length > 0) {
@@ -216,3 +303,5 @@ try {
   console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }
+
+

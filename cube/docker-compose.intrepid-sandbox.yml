@@ -20,6 +20,7 @@ services:
       INTREPID_POSTGRES_URL: ${INTREPID_POSTGRES_URL}
       INTREPID_CUBE_SCHEMA: ${INTREPID_CUBE_SCHEMA:-public}
       INTREPID_TENANT_ID: ${INTREPID_TENANT_ID}
+      PGOPTIONS: '-c app.current_tenant_id=${INTREPID_TENANT_ID}'
     volumes:
       - .:/cube/conf
     networks:
