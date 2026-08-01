@@ -3,4 +3,5 @@ cube/.env
 cube/.env.local
 cube/.env.smoke
 cube/.cubestore/
+dist/
 

@@ -14,12 +14,19 @@ export function hashAnswerText(answerText) {
 export function hashSemanticRecord(record) {
     return sha256Hex(canonicalize(record));
 }
+function compareCodeUnits(left, right) {
+    if (left < right)
+        return -1;
+    if (left > right)
+        return 1;
+    return 0;
+}
 function sortValue(value) {
     if (Array.isArray(value))
         return value.map(sortValue);
     if (!value || typeof value !== 'object')
         return value;
     return Object.fromEntries(Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => compareCodeUnits(left, right))
         .map(([key, nested]) => [key, sortValue(nested)]));
 }
