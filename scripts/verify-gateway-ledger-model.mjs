@@ -6,7 +6,7 @@ const root = process.cwd();
 const modelPath = path.join(root, 'cube', 'model', 'ai_token_usage.yml');
 const model = fs.readFileSync(modelPath, 'utf8');
 const failures = [];
-const liveMode = process.argv.includes('--live');
+const liveMode = process.argv.includes('--live') || process.env.GATEWAY_LEDGER_VERIFY === 'live';
 
 const expectedProjectionSnippets = [
   'name: ai_token_usage',
@@ -169,5 +169,3 @@ if (failures.length > 0) {
 
 const modeLabel = liveMode ? 'static and live schema' : 'static contract';
 console.log(`Gateway ledger model verification passed (${modeLabel}).`);
-
-
