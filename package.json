@@ -23,6 +23,7 @@
     "verify:gateway:access": "node scripts/verify-gateway-access.mjs",
     "verify:trace:contract": "npm run build && node scripts/verify-trace-contract.mjs",
     "verify:trace:reconciliation": "npm run build && node scripts/verify-trace-reconciliation.mjs",
+    "verify:trace:postgres-writer": "npm run build && node scripts/verify-trace-postgres-writer.mjs",
     "verify:retrieval-policy": "npm run build && node scripts/verify-retrieval-policy.mjs",
     "verify:trace:viewer": "npm run build && node scripts/verify-trace-viewer.mjs",
     "verify:eval:harness": "npm run build && node scripts/verify-eval-harness.mjs"

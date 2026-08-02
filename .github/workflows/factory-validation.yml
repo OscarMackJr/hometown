@@ -50,6 +50,9 @@ jobs:
       - name: Verify trace reconciliation
         run: npm run verify:trace:reconciliation
 
+      - name: Verify Postgres trace writer contract
+        run: npm run verify:trace:postgres-writer
+
       - name: Verify retrieval policy
         run: npm run verify:retrieval-policy
 

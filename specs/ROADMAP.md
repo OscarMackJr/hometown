@@ -90,14 +90,14 @@ Recommended path:
 4. Land `cube/model/ai_answer_traces.yml` with the `ai_token_usage` join.
 5. Add `verify:trace:contract` and `verify:trace:reconciliation` to the validation gate.
 
-Current implementation note: the shipped `FileAnswerTraceWriter` is a CI/local scaffold that appends JSONL and is useful for contract verification. It is not the immutable Postgres-backed writer described by the production provenance story. Until a Postgres writer lands, `sql/answer_trace_ddl.sql` and `cube/model/ai_answer_traces.yml` are contract/queryability artifacts, not proof that runtime traces are immutable.
+Current implementation note: the shipped `FileAnswerTraceWriter` remains the CI/local default and appends JSONL fixtures. `PostgresAnswerTraceWriter` is available as an opt-in non-production writer for the `answer_trace` table contract and has a static mapping verifier. That still is not the full production provenance story: immutable runtime operations, retention, hosted viewer auth, and tenant-scoped trace reads remain deployment/security work.
 
 The current trace viewer is a read-only renderer/module over file-backed traces. It has no hosted HTTP surface, no Entra authentication, and no tenant-scoped trace read path. Those security requirements attach when a server/API surface is added.
 Guardrails: references and hashes only, never bodies; `query.text` and `retrieval.cubeQuery` policy-gated per feature tag; traces append-only; ledger facts joined, never copied.
 
 Exit criteria:
 
-- A GraphRAG answer produces a validated trace with at least one evidence record and a resolvable ledger join.
+- A GraphRAG answer produces a validated trace with at least one evidence record and a resolvable ledger join, using the Postgres writer in non-production before production claims are made.
 - The `ungrounded_answers` measure returns correct results against seeded traces, including one deliberate zero-evidence trace.
 - Trace-store outage test: answers continue, alarm fires, reconciliation quantifies the gap.
 - Empty `policy` and `signature` slots round-trip through validation (Stage 5 and federation forward-compatibility proven by test).
@@ -164,4 +164,3 @@ Carried forward from the pre-integration roadmap. Items also tracked in STATE.md
 - Retention and residency policy for Answer Trace Envelope records (ATE spec section 7).
 - Per-feature-tag policy registry for `query.text` and `retrieval.cubeQuery` storage.
 - Production authorization model details for cross-divisional context beyond the Stage 5 POC.
-

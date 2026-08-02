@@ -30,7 +30,8 @@ Core engine:
 - Retrieval tier and feature degradation policy registry.
 - Governed retrieval path with timeout handling, retrieval attempts, context completeness, fail-closed behavior, and degrade-with-disclosure behavior.
 - Answer Trace Envelope schema at `ate/0.2`, with top-level retrieval/degradation metadata.
-- File-backed `IAnswerTraceWriter` implementation for CI/local trace verification only; it does not provide immutable Postgres-backed provenance.
+- File-backed `IAnswerTraceWriter` implementation for CI/local trace verification only; it remains the default verifier path and does not provide immutable provenance.
+- Opt-in non-production `PostgresAnswerTraceWriter` for the ATE v0.2 `answer_trace` table contract; it requires explicit local/env configuration and a pg-compatible client.
 - Minimal traced answer path that writes ATE v0.2 traces without evidence bodies, prompt text, or answer text.
 - Canonical hash helpers for questions, answers, and semantic records.
 - Factory evaluation rig.
@@ -72,7 +73,7 @@ Specs:
 
 SQL:
 
-- Answer trace DDL exists for an append-only `answer_trace` store with ATE v0.2 query columns. The SQL table and Cube model are contract/queryability artifacts until a Postgres trace writer is implemented.
+- Answer trace DDL exists for an append-only `answer_trace` store with ATE v0.2 query columns. The SQL table and Cube model have a verified non-production writer mapping, while production deployment, immutable operations, retention, and trace-read authorization remain open.
 - Intrepid tenant RLS migration exists for non-production databases.
 - Eval harness DDL exists as a contract artifact for `eval_run` and `eval_result`.
 
@@ -86,15 +87,15 @@ The project remains before production GraphRAG/authorization hardening:
 - Stage 1 extension adds Popeye spend-ledger reporting through Cube. The `ai_token_usage` Cube model is present; live chargeback verification still depends on a connected Popeye gateway ledger table.
 - Stage 2, Intrepid non-production slice, has tenant-safety hardening in place for the local/sandbox pattern; source-owner load agreements remain a governance task.
 - Stage 3, Nexus CRM context slice, is planned but not yet implemented.
-- Stage 4, Answer Provenance, has a local traced answer path and verifiers. The current writer/viewer/eval flow is file-backed and CI-safe; production GraphRAG integration, Postgres-backed trace writes, immutable runtime provenance, viewer auth, and tenant-scoped trace reads remain future work.
+- Stage 4, Answer Provenance, has a local traced answer path and verifiers. The current default writer/viewer/eval flow is file-backed and CI-safe; a non-production Postgres trace writer exists as an opt-in path. Production GraphRAG integration, immutable runtime operations, viewer auth, and tenant-scoped trace reads remain future work.
 - Stage 5, Governed Semantic Access, is chartered as Popeye POC B and still depends on Entra-driven semantic authorization.
 
 ## Next Task
 
 Recommended next engineering step: production-shape integration hardening, not another new demo surface.
 
-1. Implement a Postgres-backed trace writer before presenting provenance as immutable runtime history; the current `FileAnswerTraceWriter` is CI/local-only.
-2. Wire ATE v0.2 trace writing into the first real GraphRAG answer path when that path lands.
+1. Wire the opt-in Postgres-backed trace writer into a non-production GraphRAG answer path and run it against an applied `answer_trace` table.
+2. Define production immutability, retention, hosted viewer auth, and tenant-scoped trace-read controls before presenting provenance as production runtime history.
 3. Replace placeholder CRM and ledger mappings with source-specific models.
 4. Define production Cube session handling for `app.current_tenant_id` rather than relying on local `PGOPTIONS`.
 5. Obtain source-owner retrieval/load agreement artifacts for Nexus, Intrepid, and ledger.
@@ -121,17 +122,20 @@ npm run test:factory:intrepid-cube
 npm run verify:intrepid:tenant-safety
 npm run verify:trace:contract
 npm run verify:trace:reconciliation
+npm run verify:trace:postgres-writer
 npm run verify:retrieval-policy
 npm run verify:trace:viewer
 npm run verify:eval:harness
 ```
 
-Pull-request CI runs contract-mode verifiers only: static/file-backed checks plus the disposable Intrepid Cube smoke test. Live gateway ledger checks remain opt-in via `npm run verify:gateway:ledger-model -- --live` or `GATEWAY_LEDGER_VERIFY=live`; Intrepid database-backed mapping remains opt-in via `npm run verify:intrepid:sandbox-mapping -- --live` or `npm run verify:intrepid:sandbox-mapping:docker`.
+Pull-request CI runs contract-mode verifiers only: static/file-backed checks, the static Postgres trace-writer mapping check, and the disposable Intrepid Cube smoke test. Live gateway ledger checks remain opt-in via `npm run verify:gateway:ledger-model -- --live` or `GATEWAY_LEDGER_VERIFY=live`; Intrepid database-backed mapping remains opt-in via `npm run verify:intrepid:sandbox-mapping -- --live` or `npm run verify:intrepid:sandbox-mapping:docker`.
 
 `verify:intrepid:tenant-safety` is intentionally not part of pull-request CI because it expects a pre-existing non-production Docker Postgres/container, local `cube/.env`, and explicit `INTREPID_SANDBOX_VERIFY=non-production`. Run it before releases or sandbox demos where that local database profile is available.
 The sandbox and Cube-backed commands require local, non-production configuration. Do not add real credentials to source control.
 
 The gateway verifier commands exist. `query:gateway:chargeback` and live reconciliation require a connected non-production Popeye ledger table, `public."LiteLLM_SpendLogs"`.
+
+The configured factory trace path defaults to local JSONL output when ANSWER_TRACE_WRITER is unset or ile. For the non-production Postgres runtime path, set ANSWER_TRACE_WRITER=postgres and TRACE_POSTGRES_URL=<connection string> before running the live trace writer verifier or a configured answer path.
 
 ## Guardrails
 
@@ -175,8 +179,8 @@ Tenant-scoped Intrepid tables use forced RLS with the session setting `app.curre
 - CRM Cube models are still placeholder-level and need source-specific mapping.
 - Ledger integration remains a placeholder and needs a real source contract.
 - Live Popeye gateway ledger data is not connected in this workspace; `ai_token_usage` is present but live chargeback queries need `public."LiteLLM_SpendLogs"`.
-- File-backed trace, viewer, and eval paths are CI-safe POC implementations only; Postgres-backed non-production/runtime trace writes and immutable provenance are not implemented yet.
-- The trace SQL DDL and Cube answer-trace model are queryability contracts until a Postgres writer writes ATE v0.2 envelopes into `answer_trace`.
+- File-backed trace, viewer, and eval paths are CI-safe POC implementations only; the Postgres writer is opt-in and non-production until runtime deployment/security decisions land.
+- The trace SQL DDL and Cube answer-trace model have a verified writer mapping, but production immutability, retention, hosted viewer auth, and tenant-scoped trace reads are not implemented yet.
 - The trace viewer is currently a renderer/module over file-backed traces, not an authenticated hosted service; Entra auth and tenant-scoped trace reads attach when a server/API surface is added.
 - The eval harness uses deterministic local stub judging; live gateway-routed judge calls and evaluation spend attribution are not implemented yet.
 - Governed semantic access through Entra groups is planned but not implemented.
