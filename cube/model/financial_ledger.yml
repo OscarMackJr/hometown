@@ -1,13 +1,13 @@
 cubes:
   - name: financial_ledger_account
     title: Financial Ledger Account
-    description: Ledger-side account concept used to relate financial context to enterprise customers.
+    description: First Azure SQL ledger account slice used to relate governed balance context to enterprise customers.
     sql_table: dbo.ledger_accounts
 
     joins:
       - name: enterprise_customer
         relationship: many_to_one
-        sql: "{CUBE}.customer_id = {enterprise_customer}.id"
+        sql: "{CUBE}.customer_legacy_id = {enterprise_customer}.legacy_id"
 
     dimensions:
       - name: id
@@ -15,8 +15,12 @@ cubes:
         type: string
         primary_key: true
 
-      - name: customer_id
-        sql: customer_id
+      - name: account_name
+        sql: account_name
+        type: string
+
+      - name: customer_legacy_id
+        sql: customer_legacy_id
         type: string
 
       - name: currency_code
@@ -27,8 +31,16 @@ cubes:
         sql: accounting_period
         type: string
 
+      - name: is_audited
+        sql: is_audited
+        type: boolean
+
       - name: ledger_source_node
         sql: "'Azure_SQL_Ledger_Cluster'"
+        type: string
+
+      - name: compliance_lock
+        sql: "'SOX_404_Enforced'"
         type: string
 
     measures:

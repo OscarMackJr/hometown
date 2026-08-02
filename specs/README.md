@@ -25,7 +25,8 @@ This directory contains source-controlled specifications for the Enterprise Know
 
 ## POC Scope Notes
 
-- `FileAnswerTraceWriter` is CI/local-only. It writes JSONL fixtures and does not provide immutable Postgres-backed provenance.
-- `sql/answer_trace_ddl.sql` and `cube/model/ai_answer_traces.yml` are trace-store contract/queryability artifacts until a Postgres writer is implemented.
+- `FileAnswerTraceWriter` is CI/local-only and remains the default verifier path. It writes JSONL fixtures and does not provide immutable provenance. `ANSWER_TRACE_WRITER=file` or an unset writer mode selects it; `ANSWER_TRACE_FILE_PATH` overrides the JSONL path.
+- `PostgresAnswerTraceWriter` is an opt-in non-production writer for the `answer_trace` table contract. Set `ANSWER_TRACE_WRITER=postgres` and `TRACE_POSTGRES_URL` to select it for the configured factory answer path. It requires a pg-compatible client at runtime; no production credentials are stored in this repo.
+- `sql/answer_trace_ddl.sql` and `cube/model/ai_answer_traces.yml` are now backed by a writer mapping contract, but production immutability, retention, hosted viewer auth, and tenant-scoped trace reads remain future deployment/security work.
 - The trace viewer is currently a read-only renderer/module over file-backed traces, not an authenticated hosted viewer. Entra auth and tenant-scoped trace reads apply when a server/API surface is added.
 - The eval harness uses a deterministic local stub judge. Live gateway-routed LLM judging and evaluation spend attribution are not implemented yet.

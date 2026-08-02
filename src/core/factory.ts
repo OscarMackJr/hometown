@@ -12,6 +12,7 @@ import {
   RetrievalTierPolicy
 } from './retrieval-policy.js';
 import { AnswerTrace, IAnswerTraceWriter } from './trace.js';
+import { AnswerTraceWriterConfigOverrides, createConfiguredAnswerTraceWriter } from './trace-writer.js';
 import { hashAnswerText, hashQuestionText, hashSemanticRecord } from './hash.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,6 +41,12 @@ export type AnswerWithTraceOptions = QueryContextOptions & {
   primaryRequestId?: string;
   traceWriter?: IAnswerTraceWriter;
   storeQuestionText?: boolean;
+};
+
+export type AnswerWithConfiguredTraceOptions = AnswerWithTraceOptions & {
+  traceWriterConfig?: AnswerTraceWriterConfigOverrides;
+  traceWriterEnv?: NodeJS.ProcessEnv;
+  traceWriterCwd?: string;
 };
 
 export type AnswerWithTraceResult = {
@@ -140,6 +147,24 @@ export class DarkFactoryEngine {
         disclosure: `Context from ${integrationId} was unavailable; response may be incomplete.`
       }
     };
+  }
+
+  public async answerWithConfiguredTrace(
+    integrationId: string,
+    entityId: string,
+    options: AnswerWithConfiguredTraceOptions
+  ): Promise<AnswerWithTraceResult> {
+    const { traceWriterConfig, traceWriterEnv, traceWriterCwd, ...answerOptions } = options;
+    const traceWriter = answerOptions.traceWriter ?? await createConfiguredAnswerTraceWriter(
+      traceWriterConfig,
+      traceWriterEnv ?? process.env,
+      traceWriterCwd ?? process.cwd()
+    );
+
+    return this.answerWithTrace(integrationId, entityId, {
+      ...answerOptions,
+      traceWriter
+    });
   }
 
   public async answerWithTrace(
