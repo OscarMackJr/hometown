@@ -183,11 +183,12 @@ const enterpriseCustomer = readRequired('cube/model/enterprise_customer.yml');
 requireIncludes('enterprise_customer model', enterpriseCustomer, [
   'cubes:',
   'name: enterprise_customer',
-  'sql_table: public.customers',
+  'sql_table: public.companies',
   'name: financial_ledger_account',
   'relationship: one_to_many',
-  'customer_id',
-  'lifetime_value'
+  'legacy_id',
+  'annual_revenue',
+  'Nexus_CRM_Postgres'
 ]);
 
 const financialLedger = readRequired('cube/model/financial_ledger.yml');
@@ -197,9 +198,11 @@ requireIncludes('financial_ledger model', financialLedger, [
   'sql_table: dbo.ledger_accounts',
   'name: enterprise_customer',
   'relationship: many_to_one',
-  'customer_id',
+  'customer_legacy_id',
   'current_balance',
-  'Azure_SQL_Ledger_Cluster'
+  'is_audited',
+  'Azure_SQL_Ledger_Cluster',
+  'SOX_404_Enforced'
 ]);
 
 const intrepidLoanRuns = readRequired('cube/model/intrepid_loan_runs.yml');
@@ -295,5 +298,3 @@ if (failures.length > 0) {
 }
 
 console.log('Cube scaffold validation passed.');
-
-

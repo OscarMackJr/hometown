@@ -1,13 +1,13 @@
 cubes:
   - name: enterprise_customer
     title: Enterprise Customer
-    description: Unified customer concept for the CRM-centered Enterprise Knowledge Graph POC.
-    sql_table: public.customers
+    description: Nexus CRM company read model for the first governed enterprise customer slice.
+    sql_table: public.companies
 
     joins:
       - name: financial_ledger_account
         relationship: one_to_many
-        sql: "{CUBE}.id = {financial_ledger_account}.customer_id"
+        sql: "{CUBE}.legacy_id = {financial_ledger_account}.customer_legacy_id"
 
     dimensions:
       - name: id
@@ -15,22 +15,50 @@ cubes:
         type: string
         primary_key: true
 
-      - name: company_name
-        sql: company_name
-        type: string
-
-      - name: risk_status
-        sql: risk_status
-        type: string
-
-      - name: customer_id
+      - name: company_id
         sql: id
+        type: string
+
+      - name: company_name
+        sql: name
+        type: string
+
+      - name: org_id
+        sql: org_id
+        type: string
+
+      - name: owner_id
+        sql: owner_id
+        type: string
+
+      - name: domain
+        sql: domain
+        type: string
+
+      - name: industry
+        sql: industry
+        type: string
+
+      - name: size_range
+        sql: size_range
+        type: string
+
+      - name: annual_revenue
+        sql: annual_revenue
+        type: number
+
+      - name: legacy_id
+        sql: legacy_id
+        type: string
+
+      - name: crm_source_node
+        sql: "'Nexus_CRM_Postgres'"
         type: string
 
     measures:
       - name: count
         type: count
 
-      - name: lifetime_value
-        sql: lifetime_value
+      - name: annual_revenue_total
+        sql: annual_revenue
         type: sum

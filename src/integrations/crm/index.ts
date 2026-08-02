@@ -5,7 +5,7 @@ export default class CrmIntegration implements ISemanticIntegration {
   public supportedEntities = ['Customer'];
 
   public async fetchContext(entityId: string): Promise<SemanticRecord> {
-    console.log(`[CRM Node] Pulling operational data from AWS Postgres CRM cluster via Cube Mesh for: ${entityId}`);
+    console.log(`[CRM Node] Pulling Nexus CRM company context via the governed companies read model for: ${entityId}`);
     
     const mockCubePayload = {
       'Customers.companyName': 'Acme Corp Global',
@@ -26,7 +26,7 @@ export default class CrmIntegration implements ISemanticIntegration {
         {
           relation: 'MANAGED_BY_CRM',
           targetEntity: entityId,
-          sourceNode: 'AWS_Postgres_CRM_Cluster'
+          sourceNode: 'Nexus_CRM_Postgres'
         }
       ]
     };

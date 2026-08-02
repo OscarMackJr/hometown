@@ -54,7 +54,7 @@ Goal: establish Cube Open Source as the governed semantic layer over source syst
 
 Existing remaining work (unchanged):
 
-- Replace placeholder CRM and ledger mappings with source-specific models.
+- Extend the first source-specific CRM and ledger models into contacts, deals, richer ledger concepts, and live source contracts.
 - Decide the first CRM read path (API/service-only, Cube direct read, or both).
 - Add model ownership metadata and versioning conventions.
 - Add pre-aggregation or caching patterns for common entity lookups.

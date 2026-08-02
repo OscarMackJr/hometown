@@ -41,7 +41,7 @@ Core engine:
 Cube semantic layer:
 
 - Local Cube scaffold.
-- Enterprise customer and financial ledger model placeholders.
+- Source-specific Nexus CRM company and first financial ledger account models.
 - Tenant-aware Intrepid model stubs for loan runs, loans, loan exceptions, and portfolio exceptions.
 - Answer trace Cube model for answer provenance reporting, including partial-context measures.
 - Disposable local Intrepid smoke test using Postgres and Cube.
@@ -96,7 +96,7 @@ Recommended next engineering step: production-shape integration hardening, not a
 
 1. Wire the opt-in Postgres-backed trace writer into a non-production GraphRAG answer path and run it against an applied `answer_trace` table.
 2. Define production immutability, retention, hosted viewer auth, and tenant-scoped trace-read controls before presenting provenance as production runtime history.
-3. Replace placeholder CRM and ledger mappings with source-specific models.
+3. Extend the CRM and ledger model set beyond the first company/account slice, especially contacts, deals, and richer ledger concepts.
 4. Define production Cube session handling for `app.current_tenant_id` rather than relying on local `PGOPTIONS`.
 5. Obtain source-owner retrieval/load agreement artifacts for Nexus, Intrepid, and ledger.
 
@@ -176,8 +176,8 @@ Tenant-scoped Intrepid tables use forced RLS with the session setting `app.curre
 ## Known Gaps
 
 - CRM user-facing GraphRAG endpoint is not implemented.
-- CRM Cube models are still placeholder-level and need source-specific mapping.
-- Ledger integration remains a placeholder and needs a real source contract.
+- The CRM Cube layer now maps the first `companies` slice, but contacts, deals, activities, and ref data remain future source-specific models.
+- The financial ledger Cube layer now maps the first ledger account slice, but the runtime ledger integration remains mock-backed until a live source contract is wired.
 - Live Popeye gateway ledger data is not connected in this workspace; `ai_token_usage` is present but live chargeback queries need `public."LiteLLM_SpendLogs"`.
 - File-backed trace, viewer, and eval paths are CI-safe POC implementations only; the Postgres writer is opt-in and non-production until runtime deployment/security decisions land.
 - The trace SQL DDL and Cube answer-trace model have a verified writer mapping, but production immutability, retention, hosted viewer auth, and tenant-scoped trace reads are not implemented yet.
