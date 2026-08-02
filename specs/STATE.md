@@ -135,7 +135,7 @@ The sandbox and Cube-backed commands require local, non-production configuration
 
 The gateway verifier commands exist. `query:gateway:chargeback` and live reconciliation require a connected non-production Popeye ledger table, `public."LiteLLM_SpendLogs"`.
 
-The configured factory trace path defaults to local JSONL output when ANSWER_TRACE_WRITER is unset or ile. For the non-production Postgres runtime path, set ANSWER_TRACE_WRITER=postgres and TRACE_POSTGRES_URL=<connection string> before running the live trace writer verifier or a configured answer path.
+The configured factory trace path defaults to local JSONL output when `ANSWER_TRACE_WRITER` is unset or `file`. For the non-production Postgres runtime path, set `ANSWER_TRACE_WRITER=postgres` and `TRACE_POSTGRES_URL=<connection string>` before running the live trace writer verifier or a configured answer path.
 
 ## Guardrails
 
