@@ -1,0 +1,32 @@
+# Gateway ledger profile: Cube over popeye's spend ledger (ai_token_usage)
+# for the chargeback query (npm run query:gateway:chargeback).
+# Read-only: connect as ekg_cube_reader, granted by popeye/sql/ai_usage_grants.sql.
+# Azure ledger (normal case): GATEWAY_POSTGRES_SSL=true, host reachable over VPN/VNet.
+# Local ledger (interruption test only): host deploy-postgres-1, GATEWAY_POSTGRES_SSL=false.
+services:
+  cube-gateway-poc:
+    image: cubejs/cube:v1.6.64
+    ports:
+      - "4000:4000"
+      - "15432:15432"
+    env_file:
+      - .env
+    environment:
+      CUBEJS_DEV_MODE: "true"
+      CUBEJS_API_SECRET: ${CUBEJS_API_SECRET}
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: ${GATEWAY_POSTGRES_HOST}
+      CUBEJS_DB_PORT: ${GATEWAY_POSTGRES_PORT:-5432}
+      CUBEJS_DB_NAME: ${GATEWAY_POSTGRES_DB}
+      CUBEJS_DB_USER: ${GATEWAY_POSTGRES_USER}
+      CUBEJS_DB_PASS: ${GATEWAY_POSTGRES_PASSWORD}
+      CUBEJS_DB_SSL: ${GATEWAY_POSTGRES_SSL:-true}
+      CUBEJS_SQL_PORT: 15432
+    volumes:
+      - .:/cube/conf
+    networks:
+      - deploy_default
+
+networks:
+  deploy_default:
+    external: true

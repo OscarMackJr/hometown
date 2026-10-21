@@ -6,6 +6,7 @@ const requiredFiles = [
   'cube/docker-compose.yml',
   'cube/docker-compose.intrepid-smoke.yml',
   'cube/docker-compose.intrepid-sandbox.yml',
+  'cube/docker-compose.gateway-poc.yml',
   'cube/.env.example',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
@@ -68,7 +69,13 @@ const requiredEnvVars = [
   'INTREPID_CUBE_SCHEMA',
   'INTREPID_TENANT_ID',
   'INTREPID_INTEGRATION_MODE',
-  'INTREPID_SANDBOX_VERIFY'
+  'INTREPID_SANDBOX_VERIFY',
+  'GATEWAY_POSTGRES_HOST',
+  'GATEWAY_POSTGRES_PORT',
+  'GATEWAY_POSTGRES_DB',
+  'GATEWAY_POSTGRES_USER',
+  'GATEWAY_POSTGRES_PASSWORD',
+  'GATEWAY_POSTGRES_SSL'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -126,6 +133,21 @@ requireIncludes('cube/docker-compose.intrepid-sandbox.yml', sandboxCompose, [
   'INTREPID_CUBE_SCHEMA: ${INTREPID_CUBE_SCHEMA:-public}',
   'INTREPID_TENANT_ID: ${INTREPID_TENANT_ID}'
 ]);
+
+const gatewayCompose = readRequired('cube/docker-compose.gateway-poc.yml');
+requireIncludes('cube/docker-compose.gateway-poc.yml', gatewayCompose, [
+  'cubejs/cube:v',
+  'CUBEJS_DB_HOST: ${GATEWAY_POSTGRES_HOST}',
+  'CUBEJS_DB_NAME: ${GATEWAY_POSTGRES_DB}',
+  'CUBEJS_DB_USER: ${GATEWAY_POSTGRES_USER}',
+  'CUBEJS_DB_PASS: ${GATEWAY_POSTGRES_PASSWORD}',
+  'CUBEJS_DB_SSL: ${GATEWAY_POSTGRES_SSL:-true}',
+  'ekg_cube_reader',
+  'deploy_default'
+]);
+if (/cubejs\/cube:(latest|<)/.test(gatewayCompose)) {
+  failures.push('cube/docker-compose.gateway-poc.yml must pin a Cube image version');
+}
 
 const querySandbox = readRequired('scripts/cube-intrepid-sandbox-query.mjs');
 requireIncludes('scripts/cube-intrepid-sandbox-query.mjs', querySandbox, [
@@ -273,6 +295,7 @@ for (const file of [
   'cube/docker-compose.yml',
   'cube/docker-compose.intrepid-smoke.yml',
   'cube/docker-compose.intrepid-sandbox.yml',
+  'cube/docker-compose.gateway-poc.yml',
   'cube/model/enterprise_customer.yml',
   'cube/model/financial_ledger.yml',
   'cube/model/intrepid_loan_runs.yml',

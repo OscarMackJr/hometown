@@ -172,6 +172,33 @@ npm run test:factory:intrepid-cube
 
 This command loads `cube/.env`, forces `INTREPID_INTEGRATION_MODE=cube`, verifies Cube is reachable, and then runs the same factory rig used by CI. It remains local-only and is not part of GitHub Actions.
 
+## Gateway Ledger Profile
+
+`docker-compose.gateway-poc.yml` points Cube at popeye's gateway spend ledger (`public."LiteLLM_SpendLogs"`), the source of the `ai_token_usage` model and the chargeback query. Set these in `cube/.env`:
+
+```env
+GATEWAY_POSTGRES_HOST=
+GATEWAY_POSTGRES_PORT=5432
+GATEWAY_POSTGRES_DB=
+GATEWAY_POSTGRES_USER=          # an ekg_cube_reader login, never an admin role
+GATEWAY_POSTGRES_PASSWORD=
+GATEWAY_POSTGRES_SSL=true
+```
+
+- **Azure ledger (the normal case):** the Flexible Server host, with `GATEWAY_POSTGRES_SSL=true`, because Azure requires TLS. The ledger is behind a private network path, so the machine running Docker needs VPN or VNet access. The POC lead applies the read grants (`popeye/sql/ai_usage_grants.sql`) there.
+- **Local ledger (the interruption test only):** `GATEWAY_POSTGRES_HOST=deploy-postgres-1`, never `localhost` inside the container, and `GATEWAY_POSTGRES_SSL=false`. Apply the same popeye grants to that local database.
+
+The profile joins the external `deploy_default` network, so the shared Postgres project must be up first. It publishes the same ports as the other profiles (`4000`, `15432`), so run one profile at a time.
+
+```bash
+docker compose -f cube/docker-compose.gateway-poc.yml up -d
+npm run query:gateway:chargeback
+```
+
+The chargeback script reads `CUBE_SANDBOX_URL` and `CUBE_SMOKE_URL` before `CUBE_URL`. Clear them if they are set from Intrepid work, or it queries the wrong Cube.
+
+The ledger is read across tenants. Chargeback is a finance view of all spend, and `ai_token_usage` has no tenant filter, so there is no `PGOPTIONS` tenant setting on this profile. Read-only access comes from the `ekg_cube_reader` grants. Cube loads every model in `model/`, but only `ai_token_usage` (and `ai_answer_traces`, if `answer_trace` exists in the same database) can be queried through this profile; the CRM, ledger-domain and Intrepid models fail at query time, not load time.
+
 ## What Is Mocked
 
 The repository still uses the existing TypeScript integration mocks for the Dark Factory validation rig. Those mocks prove the integration contract and Zod validation path.
