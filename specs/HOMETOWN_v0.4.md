@@ -14,6 +14,7 @@ Primary post-read action: the ATE v0.4 section is a contract change — read §2
 | Section | Gap | Nature |
 |---|---|---|
 | §2 ATE v0.4 | G2, G5 | Contract change — joint review |
+| §2.5–§2.6 Trace resolution and agent answer endpoints | G5, G6 | Contract change — joint review, plus the Liam owner and popeye |
 | §3 Definition provenance | G5 | Implementation |
 | §4 Purpose-based access and masking | G3 | Implementation, largest slice |
 | §5 Source health monitoring | G6 | Implementation |
@@ -138,7 +139,7 @@ Rules:
 **Open for the review.**
 
 - **Service registry owner.** hometown proposes popeye or the Entra app registrations, not hometown.
-- **Ships with the answer endpoint (agreed with olive, §16.6).** hometown serves no HTTP today. Resolution ships in the same release and service as the answer endpoint Liam needs. That endpoint is where rule 4 is enforced, so the two cannot be split. The answer endpoint is not yet specified in hometown and needs its own section before implementation. The viewer's tenant-scoped reads (`STATE.md`, future work) join the same service.
+- **Ships with the answer endpoint (agreed with olive, §16.6).** hometown serves no HTTP today. Resolution ships in the same release and service as the answer endpoint Liam needs. That endpoint is where rule 4 is enforced, so the two cannot be split. The answer endpoint is specified in §2.6. The viewer's tenant-scoped reads (`STATE.md`, future work) join the same service.
 
 | REQ | Requirement | TC | Test criteria | Method |
 |---|---|---|---|---|
@@ -150,6 +151,212 @@ Rules:
 | REQ-PROV-24 | Resolution is enabled only on the Postgres trace store | TC-PROV-24 | File-backed store → route not registered and startup logs it as disabled; Postgres store without forced row-level security on `answer_trace` → route not registered; Postgres store with it → route served | CI |
 | REQ-PROV-25 | Resolution inherits database tenant enforcement | TC-PROV-25 | With the application-level tenant filter removed in a test setup, resolution still returns 404 for another tenant's trace (mirrors TC-TEN-01) | CI |
 | REQ-PROV-26 | Trace writes block only agent answers (invariant 4 exception boundary) | TC-PROV-26 | Injected writer failure on a user or application answer: answer still returned, write failure logged; on an agent answer: answer withheld (TC-PROV-23) | CI |
+
+### 2.6 Agent answer endpoint (proposed — confirms Liam's S-HT-1, for joint review)
+
+Status: **Proposed.** This confirms Liam's stub contract S-HT-1 (`LIAM_DESIGN_SPEC_v0.4` §5, `liam/contracts/hometown-answer.S-HT-1.json`). The changes are listed field by field below. Once agreed, it closes Liam checkpoint item A1.
+
+Reviewers, joining the §2.4 joint review:
+- the Liam owner (wire shape)
+- popeye (introspection and relay use)
+- olive (proposal shape)
+
+It ships in the same release and service as §2.5.
+
+**What it does.** One request produces one traced answer. hometown:
+1. authenticates the agent's session key through popeye introspection;
+2. checks purpose entitlement;
+3. assembles purpose-masked context;
+4. makes the model call on the session key as the registered relay;
+5. saves the trace;
+6. only then returns the answer and its trace ID.
+
+The agent never sees context, masked or unmasked — only the answer.
+
+#### Changes to S-HT-1
+
+Every S-HT-1 field is kept with its name and meaning. Only these change:
+
+| Field or element | S-HT-1 | §2.6 | Why |
+|---|---|---|---|
+| `question` | string, no bound | 1..4000 characters; outside the bound → `400 invalid_request` | Bounds prompt size and cost |
+| Request parsing | Unspecified | Strict: a missing or unknown field → `400 invalid_request` | Identity cannot be slipped in through the body |
+| `purpose` | Advisory; key authoritative | Unchanged, now explicit: the key decides, and a differing body value is recorded, never refused | Keeps the body from affecting the outcome either way |
+| `run_id` | UUIDv7 | Any lowercase canonical UUID (Liam's UUIDv7 qualifies); a run is scoped to the key's tenant | Run lookups go through the tenant-scoped read path |
+| `proposal` | At most one; Liam ignores extras | hometown sends at most one and checks its shape | The guarantee moves to the producer |
+| Error body | Unspecified | `{"error": "<code>"}` with the §5.4 codes | Liam's reason strings come from the code |
+
+Unchanged: `party_ref`, `nono_session_id`, `step_role`, `trace_id`, `answer`, `context_complete`, and Liam's §5.4 status handling.
+
+#### Request
+
+```
+POST /v1/agent/answer
+Content-Type: application/json
+
+{
+  "party_ref":       string,  // opaque party reference
+  "question":        string,  // 1..4000 characters
+  "purpose":         string,  // advisory; the key's purpose decides
+  "run_id":          uuid,    // lowercase canonical; Liam sends UUIDv7; scoped to the key's tenant
+  "nono_session_id": string,  // from the nono receipt
+  "step_role":       string   // "answer" for Liam; free text per §2.1
+}
+```
+
+All six fields are required. A missing field, an unknown field, or a field outside its bound returns `400 invalid_request`. Identity never comes from the body, so a body that tries to supply it is rejected rather than ignored.
+
+#### Authentication
+
+The agent sends no `Authorization` header; nono-proxy injects the session agent key. hometown:
+
+1. Reads the injected key. If there is none, it returns `401 no_injected_key`.
+2. Introspects the key at popeye as a registered introspection caller (`POPEYE_v0.4.2` §2.3). If the key is inactive (`active: false`), it returns `401 key_inactive`. Popeye reports any non-agent key as `active: false`, so user and application keys also get `401 key_inactive`. A positive result is cached for at most 60 s and never past `expires_at`.
+3. Never logs or stores the key. It presents the key only to the gateway, as the registered relay (`POPEYE_v0.4.2` §2.6), and never to the exchange.
+
+#### Identity
+
+Every identity field in the trace comes from introspection or from hometown's own registration, never from the request:
+
+| ATE field | Source |
+|---|---|
+| `principal.agentId` | introspection `agent_id`, copied exactly (§2.5) |
+| `principal.tenantId` | introspection `tenant_id` |
+| `principal.userId`, `policy.onBehalfOf` | introspection `on_behalf_of` |
+| `policy.principalType` | `"agent"` |
+| `policy.purpose` | introspection `purpose` |
+| `principal.appId`, `principal.featureTag` | hometown's agent registration for `agent_id` (below) |
+| `endpoint.keyId` | introspection `key_id` |
+
+**Agent registration (new).** hometown keeps a version-controlled registration for each `agent_id`, holding its `appId`, `featureTag` and degradation mode. An `agent_id` with no registration returns `422 agent_not_registered`. It is deliberately not a 403, because Liam reads 403 as a purpose refusal. Liam's registration:
+- uses `degrade_with_disclosure`, because Liam shows a notice when `context_complete=false` (`LIAM_DESIGN_SPEC_v0.4` §5.5);
+- proposes the feature tag `liam.summarise-propose`, with the name to be agreed at review.
+
+#### Purpose checks
+
+These run before any context retrieval or model call. The key's purpose is the only purpose checked or applied.
+
+1. **Body purpose (advisory).** If the request's `purpose` differs from the key's, the request continues under the key's purpose. The difference is recorded in `policy.decisions` as check `purpose_advisory`, outcome `allow`, with the two purpose names in `detail`. Purpose names are vocabulary values, not record values.
+2. **Entitlement.** The `on_behalf_of` user is not entitled to the key's purpose through directory groups (REQ-PUR-05), or the agent's own entitlement does not include it → `403 purpose_refused`. The agent's effective permissions are the intersection of its own and the user's (`vocabulary.yaml` `agent_delegation`).
+
+`403 purpose_refused` is the only 403 this endpoint returns. Passing checks are recorded in `policy.decisions`. A refused request makes no model call, and an ATE requires one, so a refusal writes no trace. Instead it is recorded as a content-free refusal event: `agent_id`, `key_id`, `run_id`, the check that failed, `ruleId` and time.
+
+#### Runs
+
+A run is identified by `(tenant_id, run_id)`, not by `run_id` alone. Run lookups go through the same tenant-scoped, row-level-security read path as §2.5, so hometown cannot see another tenant's runs and never tries to.
+
+| Condition, within the key's tenant | Result |
+|---|---|
+| `run_id` not seen before | New run; `stepIndex = 0` |
+| `run_id` seen before, same agent | Next `stepIndex` |
+| `run_id` seen before, different agent | `409 run_conflict`; nothing written |
+
+The conflict rule stops one agent attaching steps to another agent's run. The same `run_id` used in another tenant is a separate run there, invisible from here. Detecting that would need a read across tenants, and a 409 would reveal that the run exists elsewhere. `parentRunId` is never set, because onward delegation is refused (§2.1).
+
+#### Party
+
+`party_ref` is resolved within the key's tenant only. An unknown party and another tenant's party both return the same `422 party_not_found`, so the endpoint cannot reveal whether a party exists elsewhere.
+
+#### Context, model call and trace
+
+- Masking happens before context assembly (§4.2).
+- **Model choice.** hometown requests a model that popeye's model-approval registry approves for the key's data-class ceiling, or leaves the choice to popeye. It never requests a model above the ceiling. Prompt templates and parsing the model's output are also hometown's (`LIAM_DESIGN_SPEC_v0.4` §6).
+- The model call is made on the session key with hometown's relay identity (`POPEYE_v0.4.2` §2.6), so the ledger row carries `relayed_by=hometown`, the agent fields and the key's `key_id`.
+- **Which model answered.** The trace does not copy the model. It records `primaryRequestId`, and the model, tokens and cost are read from the ledger through that join (ATE design rule 1, join, never copy).
+- **Tying spend to the run.** Spend reaches Liam's run through the trace: `run.runId` → member traces → `primaryRequestId` → ledger rows (§2.1). No `run_id` is added to the ledger row; that would change the shared attribution vocabulary (Fiskroad invariant 2).
+- The trace carries the identity fields above, `run { runId, stepIndex, stepRole }`, `definitions` (§2.2) and `endpoint` (below). It is saved before the response, per §2.5 rule 4.
+
+**`endpoint` object (proposed ATE addition — gap G6, Liam O2).**
+
+```
+endpoint: {
+  sessionId: string   // nono_session_id as sent by the agent; asserted, not verified
+  keyId:     uuid     // from introspection; verified
+}
+```
+
+The object is optional and present on agent answers.
+- `keyId` is the authoritative join to nono's receipts and popeye's ledger (`POPEYE_v0.4.3` REQ-AGT-21).
+- `sessionId` is a convenience field. The agent asserts it and hometown cannot verify it.
+- Neither field carries content.
+
+#### Response
+
+```
+200 {
+  "trace_id":         uuid,
+  "answer":           string,
+  "context_complete": boolean,
+  "proposal":         null | {
+    "action_type":   string,   // matches action_id_format
+    "party_ref":     string,   // equals the request's party_ref
+    "parameters":    object,
+    "justification": string
+  }
+}
+```
+
+- `trace_id` is already saved, and resolvable through §2.5, when this response is sent.
+- `proposal` is always present and `null` when there is none. hometown sends at most one.
+- hometown generates the proposal; Liam submits it to olive with `trace_id` as `trace_ref` (`LIAM_DESIGN_SPEC_v0.4` D6). hometown never calls olive and never holds an olive credential.
+- hometown checks only a proposal's shape: `action_type` must match `action_id_format`, and `party_ref` must equal the request's. A proposal that fails is dropped (`proposal: null`) and recorded in `policy.decisions` as check `proposal_shape`, outcome `deny`. Whether an action is permitted is olive's decision, not hometown's.
+- `parameters` and `justification` are model output built from masked context, so they can contain only values the purpose allowed. hometown never unmasks a value for a proposal.
+- `answer` and `justification` are display text only.
+
+#### Errors
+
+Every error body is `{"error": "<code>"}` with nothing else. Statuses follow `LIAM_DESIGN_SPEC_v0.4` §5.4 exactly, so Liam needs no change: 401 is a key problem, 403 is only a purpose refusal, other 4xx fail without retry, and 5xx is retried once.
+
+| Status | Code | When | Liam (§5.4) |
+|---|---|---|---|
+| 401 | `no_injected_key` | No key injected | Exit 21 `hometown:no_injected_key`, no retry |
+| 401 | `key_inactive` | Introspection `active: false`, including any non-agent key | Exit 21 `hometown:key_inactive`, no retry |
+| 403 | `purpose_refused` | Entitlement check fails | Exit 20 `hometown:purpose_refused`, no retry |
+| 400 | `invalid_request` | Missing, unknown or out-of-bound field | Exit 21 `hometown:400`, no retry |
+| 409 | `run_conflict` | `run_id` belongs to another agent in this tenant | Exit 21 `hometown:409`, no retry |
+| 422 | `agent_not_registered` | No registration for `agent_id` | Exit 21 `hometown:422`, no retry |
+| 422 | `party_not_found` | Party unknown in the key's tenant | Exit 21 `hometown:422`, no retry |
+| 503 | `trace_not_saved` | Trace save failed; answer withheld (§2.5 rule 4) | One retry |
+| 503 | `context_unavailable` | Context incomplete under `fail_closed` | One retry |
+| 503 | `unavailable` | popeye, gateway or a source unreachable | One retry |
+| 504 | `deadline` | hometown's 80 s budget exceeded | One retry |
+
+- **Deadline.** Liam's timeout is 90 s, and the whole request fits inside it. hometown sets its own deadline at 80 s, so it finishes or returns `504 deadline` before Liam gives up. If both used 90 s they would race, and Liam would record a bare timeout instead of a reason code. The 10 s margin covers transit through nono-proxy.
+- **Retries.** A retry is a new step with the next `stepIndex`. If an attempt fails after its model call, the call stays in the ledger as an agent-attributed row with no trace. Reconciliation shows it as a ledger row with no matching trace; nothing hides it.
+
+#### Enablement
+
+**Shared server.** The answer endpoint and §2.5 resolution are served by the same HTTP server, in the same release. That server is also the planned home of the trace viewer's tenant-scoped reads. Every read of `answer_trace`, whether resolution, run lookup or step index, goes through one tenant-scoped read path:
+- a non-owner role;
+- `FORCE ROW LEVEL SECURITY` on `answer_trace`;
+- the tenant set on the database session from the key's `tenant_id`.
+
+No route has its own way into trace data.
+
+**Enablement.** The endpoint is served only when §2.5 resolution is served: Postgres store with forced row-level security. Otherwise an agent could receive a `trace_ref` that olive cannot resolve.
+
+#### Open for review
+
+- **Proposal binding.** The trace records `answer.hash` but not the proposal, so an agent could alter a proposal and still present a valid `trace_ref`. One option is a `proposalHash` in the ATE and in the §2.5 response. This is not proposed here; olive decides whether it needs it.
+- The `featureTag` name, and where agent registrations live.
+- Whether refused requests should produce traces, which would need an ATE shape without a model call.
+
+| REQ | Requirement | TC | Test criteria | Method |
+|---|---|---|---|---|
+| REQ-AGA-01 | Agent identity comes only from introspection | TC-AGA-01 | A body with an identity field is rejected 400; trace principal and policy fields equal the introspection values byte for byte | CI |
+| REQ-AGA-02 | Only active agent keys are served | TC-AGA-02 | No key → 401 `no_injected_key`; inactive key → 401 `key_inactive`; user or application key → 401 `key_inactive` | CI |
+| REQ-AGA-03 | The key's purpose decides; refusals happen before retrieval and the model call | TC-AGA-03 | Unentitled purpose → 403 `purpose_refused`, zero source reads, zero gateway calls, one refusal event. A differing body purpose → 200 under the key's purpose, with a `purpose_advisory` decision recorded | CI |
+| REQ-AGA-04 | A run is tenant-scoped and belongs to one agent | TC-AGA-04 | A second agent in the same tenant reusing a `run_id` → 409, nothing written. The same `run_id` in another tenant starts a separate run with `stepIndex` 0 and no 409 | CI |
+| REQ-AGA-05 | Steps in a run are indexed in order | TC-AGA-05 | Three requests on one `run_id` record `stepIndex` 0, 1, 2 | CI |
+| REQ-AGA-06 | Unknown and other-tenant parties look the same | TC-AGA-06 | Both return identical 422 status and body | CI |
+| REQ-AGA-07 | An answer is returned only once its trace resolves | TC-AGA-07 | The response's `trace_id` resolves 200 through §2.5 at once (with TC-PROV-23) | CI |
+| REQ-AGA-08 | At most one proposal, structurally valid | TC-AGA-08 | Model output with two proposals, a bad `action_type`, or another party's `party_ref` yields at most one valid proposal; each dropped one is recorded as `proposal_shape` `deny` | CI |
+| REQ-AGA-09 | The endpoint link is recorded | TC-AGA-09 | `endpoint.keyId` equals introspection `key_id`; `endpoint.sessionId` equals the request's `nono_session_id` | CI |
+| REQ-AGA-10 | The endpoint is served only when resolution is | TC-AGA-10 | File store, or Postgres without forced row-level security → route not registered | CI |
+| REQ-AGA-11 | Error bodies carry a code and nothing else | TC-AGA-11 | Every error response body has exactly one key, `error`, with a listed code. The only 403 code is `purpose_refused` | CI |
+| REQ-AGA-12 | Model calls are relayed on the session key | TC-AGA-12 | The ledger row has `relayed_by=hometown`, the agent fields and the same `key_id`; the trace's `primaryRequestId` joins it | CI (live) |
+| REQ-AGA-13 | The model is approved for the key's data-class ceiling | TC-AGA-13 | Under a key with a lower ceiling, the joined ledger row's model is one the registry approves for that ceiling; no request names a model above it | CI (live) |
+| REQ-AGA-14 | Answer and resolution share one tenant-scoped read path | TC-AGA-14 | With the application-level tenant filter removed in a test setup, run lookups and resolution both see only the key's tenant (mirrors TC-PROV-25) | CI |
 
 ---
 
