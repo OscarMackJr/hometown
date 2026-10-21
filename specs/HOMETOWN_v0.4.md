@@ -117,9 +117,21 @@ Rules:
 1. **Exactly these six fields.** No envelope content, evidence, hashes or principal fields beyond those listed. `run_id` and `agent_id` are `null`, not omitted, so olive can tell "the trace predates runs" (`schema_version`) apart from "this trace had no run". For a proposal, olive treats `run_id: null` as a mismatch.
 2. **Registered services only.** An unregistered caller gets `401`. A registered service whose credential carries no tenant gets `403`. Which registry this checks is open (below).
 3. **Tenant from the credential, never the request.** Any tenant parameter in the path, query or body is ignored. A missing trace, a trace in another tenant, a trace with a null `tenant_id`, and a malformed `trace_id` all return the same `404` with the same body. The endpoint must not reveal whether a trace exists outside the caller's tenant.
-4. **Agent answers are saved before they are returned.** For any answer where `policy.principalType` is `agent`, the trace write must commit to the store before the answer, or its trace ID, goes back to the caller. If the write fails, the answer is withheld and the caller gets an error — fail closed, no untraced agent answers. As a result, an agent can only hold a `trace_ref` that already resolves, so olive may treat a `404` as a final mismatch, not a race to retry. Traces are append-only, so olive may cache a `200` indefinitely.
+4. **Agent answers are saved before they are returned.** For any answer where `policy.principalType` is `agent`, the trace write must commit to the store before the answer, or its trace ID, goes back to the caller. If the write fails, the answer is withheld and the caller gets an error — fail closed, no untraced agent answers. This is a ratified exception to the program's invariant 4, "observation never blocks", limited to agent answers (see "Invariant 4 exception" below). As a result, an agent can only hold a `trace_ref` that already resolves, so olive may treat a `404` as a final mismatch, not a race to retry. Traces are append-only, so olive may cache a `200` indefinitely.
 5. **Enabled only on the Postgres store.** The route is served only when the configured trace store is the Postgres writer (`sql/answer_trace_ddl.sql`). With the default file-backed store, the route is not registered, and startup logs that resolution is disabled. The file store is per-process and has no database-level tenant enforcement, so it cannot back a tenant-scoped cross-service read. While resolution is disabled, olive stays on fixtures.
 6. **Same read path as the trace viewer.** Resolution reads `answer_trace` through the tenant-scoped read path with database row security (`TENANT_ISOLATION_DEFENSE_IN_DEPTH_v0.1.md`): a non-owner role, `FORCE ROW LEVEL SECURITY`, tenant set on the database session. There is no second route to trace data. Prerequisite: `answer_trace` has no row-level security policy today, so adding it is part of this work, and the route stays disabled on a Postgres store that lacks it.
+
+**Invariant 4 exception (ratified).**
+
+| Field | Value |
+|---|---|
+| Decision | **Ratified.** Exception to Fiskroad cross-project invariant 4, "observation never blocks" (`fiskroad/STATE.md`) |
+| Date | 2026-10-20 |
+| Ratified by | Oscar Mack (architecture and risk decisions) |
+| Scope | Only §2.5 rule 4: answers where `policy.principalType` is `agent`. A failed trace write withholds the answer and its trace ID |
+| Not in scope | User and application answers. Their trace writes stay non-blocking and must never fail a request. Other observation components (ledger, monitoring, source health §5) are unchanged |
+| Reason | An agent must never hold a `trace_ref` that does not resolve. Otherwise olive cannot tell a forged or mistaken reference from a trace that was never saved, and every agent proposal is unverifiable |
+| Change control | Widening the scope to any other principal type or component needs a new ratification. Tests TC-PROV-23 and TC-PROV-26 guard the boundary |
 
 **Interim (olive).** Until this endpoint is live in olive's environment, olive checks `trace_ref` against fixtures and labels every proposal `trace_verification: fixture`. hometown suggests olive make `trace_verification` a fixed set of values (`fixture | verified | mismatch`) and not let `fixture` proposals go past non-production. The values and the gate are olive's to decide.
 
@@ -137,6 +149,7 @@ Rules:
 | REQ-PROV-23 | An agent answer is never returned before its trace is saved | TC-PROV-23 | Injected writer failure → answer withheld, error returned; on success, resolution returns 200 for the `trace_ref` as soon as the answer is received | CI |
 | REQ-PROV-24 | Resolution is enabled only on the Postgres trace store | TC-PROV-24 | File-backed store → route not registered and startup logs it as disabled; Postgres store without forced row-level security on `answer_trace` → route not registered; Postgres store with it → route served | CI |
 | REQ-PROV-25 | Resolution inherits database tenant enforcement | TC-PROV-25 | With the application-level tenant filter removed in a test setup, resolution still returns 404 for another tenant's trace (mirrors TC-TEN-01) | CI |
+| REQ-PROV-26 | Trace writes block only agent answers (invariant 4 exception boundary) | TC-PROV-26 | Injected writer failure on a user or application answer: answer still returned, write failure logged; on an agent answer: answer withheld (TC-PROV-23) | CI |
 
 ---
 
